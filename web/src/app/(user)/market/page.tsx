@@ -7,6 +7,7 @@ import { Empty, Input, Spin, Table, Tag, Typography } from "antd";
 import type { MarketBillingMode, MarketFilters, MarketGroupPrice, MarketListing, MarketModel } from "@/constant/model-market";
 import { buildMarketListings, buildMarketModels, filterMarketListings, formatMarketPrice, marketBillingModeLabels, marketBillingUnit, marketEndpointLabels, marketFacetEnabled, marketPlatform } from "@/constant/model-market";
 import { useConfigStore } from "@/stores/use-config-store";
+import { useThemeStore } from "@/stores/use-theme-store";
 import { doneNavigationProgress, startNavigationProgress } from "@/components/layout/navigation-progress";
 
 const chipColors = ["#a52a2a", "#0f766e", "#1d4ed8", "#7e22ce", "#a16207", "#be185d", "#166534"];
@@ -51,15 +52,15 @@ function renderPriceBreakdown(model: MarketModel, group: MarketGroupPrice, actua
 type ChipOption = { value: string; label: string; count?: number; suffix?: string; accent?: string; disabled?: boolean };
 
 function Chips({ value, options, onChange }: { value: string; options: ChipOption[]; onChange: (value: string) => void }) {
+    const dark = useThemeStore((state) => state.theme === "dark");
     return (
         <div className="flex flex-wrap items-center gap-1.5">
             {options.map((option) => {
                 const active = option.value === value;
-                const cls = "inline-flex items-center rounded-md px-2 py-0.5 text-xs leading-5 font-medium transition " +
-                    (active
-                        ? "bg-[var(--ant-color-primary)] text-[var(--ant-color-text-light-solid)] shadow-sm"
-                        : "bg-[var(--ant-color-fill-secondary)] text-[var(--ant-color-text)] hover:bg-[var(--ant-color-fill)]") +
-                    (option.disabled ? " cursor-not-allowed opacity-50" : "");
+                const base = "inline-flex items-center rounded-md border px-2 py-0.5 text-xs leading-5 font-medium transition" + (option.disabled ? " cursor-not-allowed opacity-50" : "");
+                const chipStyle: CSSProperties = active
+                    ? { backgroundColor: dark ? "#f3f4f6" : "#111827", color: dark ? "#111827" : "#ffffff", borderColor: "transparent" }
+                    : { backgroundColor: dark ? "#374151" : "#f3f4f6", color: dark ? "#f9fafb" : "#374151", borderColor: dark ? "#4b5563" : "#d1d5db" };
                 return (
                     <button
                         key={option.value}
@@ -68,7 +69,8 @@ function Chips({ value, options, onChange }: { value: string; options: ChipOptio
                         disabled={option.disabled}
                         title={option.disabled ? "当前筛选条件下没有匹配结果" : undefined}
                         onClick={() => onChange(option.value)}
-                        className={cls}
+                        className={base}
+                        style={chipStyle}
                     >
                         {option.accent ? <span className="mr-1 inline-block size-2 rounded-full" style={{ backgroundColor: option.accent }} /> : null}
                         <span>{option.label}</span>
@@ -83,16 +85,18 @@ function Chips({ value, options, onChange }: { value: string; options: ChipOptio
 
 function FilterSection({ title, defaultOpen = true, children }: { title: string; defaultOpen?: boolean; children: ReactNode }) {
     const [open, setOpen] = useState(defaultOpen);
+    const dark = useThemeStore((state) => state.theme === "dark");
     return (
         <section>
             <button
                 type="button"
                 aria-expanded={open}
                 onClick={() => setOpen((value) => !value)}
-                className="flex w-full items-center justify-between gap-2 px-1 py-2.5 text-sm font-semibold text-[var(--ant-color-text)]"
+                className="flex w-full items-center justify-between gap-2 px-1 py-2.5 text-sm font-semibold"
+                style={{ color: dark ? "#f3f4f6" : "#111827" }}
             >
                 <span>{title}</span>
-                {open ? <ChevronUp className="size-4 text-[var(--ant-color-text-secondary)]" /> : <ChevronDown className="size-4 text-[var(--ant-color-text-secondary)]" />}
+                {open ? <ChevronUp className="size-4" style={{ color: dark ? "#9ca3af" : "#6b7280" }} /> : <ChevronDown className="size-4" style={{ color: dark ? "#9ca3af" : "#6b7280" }} />}
             </button>
             {open ? <div className="px-1 pb-3">{children}</div> : null}
         </section>
@@ -114,6 +118,7 @@ export default function MarketPage() {
     const [billingFilter, setBillingFilter] = useState<MarketBillingMode | "all">("all");
     const [endpointFilter, setEndpointFilter] = useState<MarketModel["kind"] | "all">("all");
     const [viewMode, setViewMode] = useState<ViewMode>("table");
+    const dark = useThemeStore((state) => state.theme === "dark");
     useEffect(() => {
         if (isLoading) startNavigationProgress();
         else doneNavigationProgress();
@@ -354,13 +359,13 @@ export default function MarketPage() {
                             <span>筛选</span>
                             <span className="whitespace-nowrap text-xs font-normal text-[var(--ant-color-text-secondary)]">{visibleModelCount} 个模型 · {visibleGroups.length} 个分组</span>
                         </summary>
-                        <div className="divide-y divide-[var(--ant-color-border-secondary)] border-t border-[var(--ant-color-border-secondary)] px-3 py-1">{filterSections}</div>
+                        <div className="divide-y divide-gray-200 border-t border-gray-200 px-3 py-1 dark:divide-gray-700 dark:border-gray-700">{filterSections}</div>
                     </details>
                 </div>
 
                 <div className="flex items-start gap-5">
                     <aside className="sticky top-4 hidden w-64 shrink-0 lg:block">
-                        <div className="divide-y divide-[var(--ant-color-border-secondary)] rounded-lg border border-[var(--ant-color-border-secondary)] bg-[var(--ant-color-bg-container)] px-3 py-1">
+                        <div className="divide-y divide-gray-200 rounded-lg border px-3 py-1 dark:divide-gray-700" style={{ backgroundColor: dark ? "#111827" : "#ffffff", borderColor: dark ? "#374151" : "#e5e7eb" }}>
                             {filterSections}
                         </div>
                     </aside>
