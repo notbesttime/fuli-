@@ -17,7 +17,7 @@ function chipColor(value: string) {
     return chipColors[hash % chipColors.length];
 }
 
-const smallTagStyle: CSSProperties = { fontSize: 11, lineHeight: "16px", padding: "0 6px", margin: 0 };
+const smallTagStyle: CSSProperties = { fontSize: 10, lineHeight: "16px", padding: "0 6px", margin: 0 };
 
 function SmallTag(props: ComponentProps<typeof Tag>) {
     return <Tag {...props} style={{ ...smallTagStyle, ...(props.style || {}) }} />;
@@ -53,21 +53,21 @@ type FilterChoice<T extends string | number> = { value: T; label: string; disabl
 function FilterChips<T extends string | number>({ label, value, options, onChange }: { label: string; value: T; options: FilterChoice<T>[]; onChange: (value: T) => void }) {
     return (
         <div className="flex items-start gap-2">
-            <span className="w-12 shrink-0 pt-1.5 text-xs font-medium tracking-wide text-[var(--ant-color-text-tertiary)]">{label}</span>
-            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            <span className="w-10 shrink-0 pt-1 text-xs leading-5 font-medium text-[var(--ant-color-text-tertiary)]">{label}</span>
+            <div className="flex min-w-0 flex-wrap items-center gap-1">
                 {options.map((option) => {
                     const active = option.value === value;
                     const accent = option.accent;
                     let style: CSSProperties | undefined;
-                    let cls = "rounded-lg px-2.5 py-1 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40";
+                    let cls = "rounded-md px-2 py-0.5 text-xs leading-5 font-medium transition disabled:cursor-not-allowed disabled:opacity-45";
                     if (active) {
                         if (accent) style = { backgroundColor: accent, color: "#fff" };
-                        else cls += " bg-[var(--ant-color-primary)] text-white";
+                        else cls += " bg-[var(--ant-color-primary)] text-[var(--ant-color-text-light-solid)]";
                     } else if (accent) {
-                        style = { color: accent, backgroundColor: `color-mix(in srgb, ${accent} 12%, transparent)`, boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${accent} 30%, transparent)` };
-                        cls += " hover:brightness-95";
+                        style = { color: accent, backgroundColor: `color-mix(in srgb, ${accent} 22%, transparent)`, boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${accent} 55%, transparent)` };
+                        cls += " hover:brightness-110";
                     } else {
-                        cls += " ring-1 ring-[var(--ant-color-border)] text-[var(--ant-color-text-secondary)] hover:bg-[var(--ant-color-fill-tertiary)]";
+                        cls += " bg-[var(--ant-color-fill-tertiary)] text-[var(--ant-color-text)] ring-1 ring-[var(--ant-color-border-secondary)] hover:bg-[var(--ant-color-fill-secondary)]";
                     }
                     return (
                         <button
@@ -296,7 +296,7 @@ export default function MarketPage() {
                             aria-label="表格视图"
                             aria-pressed={viewMode === "table"}
                             onClick={() => setViewMode("table")}
-                            className={"flex size-8 items-center justify-center rounded-md border transition " + (viewMode === "table" ? "border-[var(--ant-color-primary)] bg-[var(--ant-color-primary)] text-white" : "border-[var(--ant-color-border)] text-[var(--ant-color-text-secondary)] hover:brightness-95")}
+                            className={"flex size-8 items-center justify-center rounded-md border transition " + (viewMode === "table" ? "border-[var(--ant-color-primary)] bg-[var(--ant-color-primary)] text-[var(--ant-color-text-light-solid)]" : "border-[var(--ant-color-border)] text-[var(--ant-color-text-secondary)] hover:brightness-95")}
                         >
                             <Table2 className="size-4" />
                         </button>
@@ -305,7 +305,7 @@ export default function MarketPage() {
                             aria-label="卡片视图"
                             aria-pressed={viewMode === "card"}
                             onClick={() => setViewMode("card")}
-                            className={"flex size-8 items-center justify-center rounded-md border transition " + (viewMode === "card" ? "border-[var(--ant-color-primary)] bg-[var(--ant-color-primary)] text-white" : "border-[var(--ant-color-border)] text-[var(--ant-color-text-secondary)] hover:brightness-95")}
+                            className={"flex size-8 items-center justify-center rounded-md border transition " + (viewMode === "card" ? "border-[var(--ant-color-primary)] bg-[var(--ant-color-primary)] text-[var(--ant-color-text-light-solid)]" : "border-[var(--ant-color-border)] text-[var(--ant-color-text-secondary)] hover:brightness-95")}
                         >
                             <LayoutGrid className="size-4" />
                         </button>
