@@ -1,8 +1,8 @@
 "use client";
 
-import { LayoutGrid, Search, Table2 } from "lucide-react";
+import { ChevronDown, ChevronUp, LayoutGrid, Search, Table2 } from "lucide-react";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import type { CSSProperties, ComponentProps } from "react";
+import type { CSSProperties, ComponentProps, ReactNode } from "react";
 import { Empty, Input, Spin, Table, Tag, Typography } from "antd";
 import type { MarketBillingMode, MarketFilters, MarketGroupPrice, MarketListing, MarketModel } from "@/constant/model-market";
 import { buildMarketListings, buildMarketModels, filterMarketListings, formatMarketPrice, marketBillingModeLabels, marketBillingUnit, marketEndpointLabels, marketFacetEnabled, marketPlatform } from "@/constant/model-market";
@@ -48,44 +48,54 @@ function renderPriceBreakdown(model: MarketModel, group: MarketGroupPrice, actua
     );
 }
 
-type FilterChoice<T extends string | number> = { value: T; label: string; disabled?: boolean; accent?: string };
+type ChipOption = { value: string; label: string; count?: number; suffix?: string; accent?: string; disabled?: boolean };
 
-function FilterChips<T extends string | number>({ label, value, options, onChange }: { label: string; value: T; options: FilterChoice<T>[]; onChange: (value: T) => void }) {
+function Chips({ value, options, onChange }: { value: string; options: ChipOption[]; onChange: (value: string) => void }) {
     return (
-        <div className="flex items-start gap-2">
-            <span className="w-10 shrink-0 pt-1 text-xs leading-5 font-medium text-[var(--ant-color-text-tertiary)]">{label}</span>
-            <div className="flex min-w-0 flex-wrap items-center gap-1">
-                {options.map((option) => {
-                    const active = option.value === value;
-                    const accent = option.accent;
-                    let style: CSSProperties | undefined;
-                    let cls = "rounded-md px-2 py-0.5 text-xs leading-5 font-medium transition disabled:cursor-not-allowed disabled:opacity-45";
-                    if (active) {
-                        if (accent) style = { backgroundColor: accent, color: "#fff" };
-                        else cls += " bg-[var(--ant-color-primary)] text-[var(--ant-color-text-light-solid)]";
-                    } else if (accent) {
-                        style = { color: accent, backgroundColor: `color-mix(in srgb, ${accent} 22%, transparent)`, boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${accent} 55%, transparent)` };
-                        cls += " hover:brightness-110";
-                    } else {
-                        cls += " bg-[var(--ant-color-fill-tertiary)] text-[var(--ant-color-text)] ring-1 ring-[var(--ant-color-border-secondary)] hover:bg-[var(--ant-color-fill-secondary)]";
-                    }
-                    return (
-                        <button
-                            key={String(option.value)}
-                            type="button"
-                            aria-pressed={active}
-                            disabled={option.disabled}
-                            title={option.disabled ? "当前筛选条件下没有匹配结果" : undefined}
-                            onClick={() => onChange(option.value)}
-                            style={style}
-                            className={cls}
-                        >
-                            {option.label}
-                        </button>
-                    );
-                })}
-            </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+            {options.map((option) => {
+                const active = option.value === value;
+                const cls = "inline-flex items-center rounded-md px-2 py-0.5 text-xs leading-5 font-medium transition " +
+                    (active
+                        ? "bg-[var(--ant-color-primary)] text-[var(--ant-color-text-light-solid)] shadow-sm"
+                        : "bg-[var(--ant-color-fill-secondary)] text-[var(--ant-color-text)] hover:bg-[var(--ant-color-fill)]") +
+                    (option.disabled ? " cursor-not-allowed opacity-50" : "");
+                return (
+                    <button
+                        key={option.value}
+                        type="button"
+                        aria-pressed={active}
+                        disabled={option.disabled}
+                        title={option.disabled ? "当前筛选条件下没有匹配结果" : undefined}
+                        onClick={() => onChange(option.value)}
+                        className={cls}
+                    >
+                        {option.accent ? <span className="mr-1 inline-block size-2 rounded-full" style={{ backgroundColor: option.accent }} /> : null}
+                        <span>{option.label}</span>
+                        {option.suffix ? <span className="ml-1 text-[10px] font-normal opacity-70">{option.suffix}</span> : null}
+                        {typeof option.count === "number" ? <span className="ml-1 text-[10px] font-normal opacity-70">{option.count}</span> : null}
+                    </button>
+                );
+            })}
         </div>
+    );
+}
+
+function FilterSection({ title, defaultOpen = true, children }: { title: string; defaultOpen?: boolean; children: ReactNode }) {
+    const [open, setOpen] = useState(defaultOpen);
+    return (
+        <section>
+            <button
+                type="button"
+                aria-expanded={open}
+                onClick={() => setOpen((value) => !value)}
+                className="flex w-full items-center justify-between gap-2 px-1 py-2.5 text-sm font-semibold text-[var(--ant-color-text)]"
+            >
+                <span>{title}</span>
+                {open ? <ChevronUp className="size-4 text-[var(--ant-color-text-secondary)]" /> : <ChevronDown className="size-4 text-[var(--ant-color-text-secondary)]" />}
+            </button>
+            {open ? <div className="px-1 pb-3">{children}</div> : null}
+        </section>
     );
 }
 
@@ -131,45 +141,71 @@ export default function MarketPage() {
     const totalModelCount = models.length;
     const filtering = vendorFilter !== "all" || groupFilter !== "all" || billingFilter !== "all" || endpointFilter !== "all" || deferredKeyword.trim() !== "";
 
-    const renderFilterControls = () => (
-        <div className="space-y-3">
-            <FilterChips
-                label="分组"
-                value={groupFilter}
-                onChange={setGroupFilter}
-                options={[
-                    { value: "all", label: "全部" },
-                    ...groups.map((group) => ({ value: group.id, label: group.name, disabled: !marketFacetEnabled(listings, filters, "groupId", group.id) })),
-                ]}
-            />
-            <FilterChips
-                label="供应商"
-                value={vendorFilter}
-                onChange={setVendorFilter}
-                options={[
-                    { value: "all", label: "全部" },
-                    ...vendors.map((vendor) => ({ value: vendor, label: vendor, accent: chipColor(vendor), disabled: !marketFacetEnabled(listings, filters, "platform", vendor) })),
-                ]}
-            />
-            <FilterChips<MarketBillingMode | "all">
-                label="计费"
-                value={billingFilter}
-                onChange={setBillingFilter}
-                options={[
-                    { value: "all", label: "全部" },
-                    ...billingModes.map((mode) => ({ value: mode, label: marketBillingModeLabels[mode], disabled: !marketFacetEnabled(listings, filters, "billingMode", mode) })),
-                ]}
-            />
-            <FilterChips<MarketModel["kind"] | "all">
-                label="端点"
-                value={endpointFilter}
-                onChange={setEndpointFilter}
-                options={[
-                    { value: "all", label: "全部" },
-                    ...endpoints.map((kind) => ({ value: kind, label: marketEndpointLabels[kind], disabled: !marketFacetEnabled(listings, filters, "endpoint", kind) })),
-                ]}
-            />
-        </div>
+    const vendorCounts = useMemo(() => {
+        const byVendor: Record<string, Set<string>> = {};
+        for (const { model } of listings) {
+            const key = marketPlatform(model);
+            if (!byVendor[key]) byVendor[key] = new Set();
+            byVendor[key].add(model.model);
+        }
+        const result: Record<string, number> = {};
+        for (const key of Object.keys(byVendor)) result[key] = byVendor[key].size;
+        return result;
+    }, [listings]);
+    const endpointCounts = useMemo(() => {
+        const result: Record<string, number> = {};
+        for (const model of models) result[model.kind] = (result[model.kind] || 0) + 1;
+        return result;
+    }, [models]);
+    const billingCounts = useMemo(() => {
+        const result: Record<string, number> = {};
+        for (const model of models) result[model.billingMode] = (result[model.billingMode] || 0) + 1;
+        return result;
+    }, [models]);
+
+    const filterSections = (
+        <>
+            <FilterSection title="分组">
+                <Chips
+                    value={groupFilter}
+                    onChange={setGroupFilter}
+                    options={[
+                        { value: "all", label: "所有分组" },
+                        ...groups.map((group) => ({ value: group.id, label: group.name, suffix: "×" + formatRatio(group.ratio), disabled: !marketFacetEnabled(listings, filters, "groupId", group.id) })),
+                    ]}
+                />
+            </FilterSection>
+            <FilterSection title="所有供应商">
+                <Chips
+                    value={vendorFilter}
+                    onChange={setVendorFilter}
+                    options={[
+                        { value: "all", label: "所有供应商", count: totalModelCount },
+                        ...vendors.map((vendor) => ({ value: vendor, label: vendor, accent: chipColor(vendor), count: vendorCounts[vendor] || 0, disabled: !marketFacetEnabled(listings, filters, "platform", vendor) })),
+                    ]}
+                />
+            </FilterSection>
+            <FilterSection title="计费">
+                <Chips
+                    value={billingFilter}
+                    onChange={(value) => setBillingFilter(value as MarketBillingMode | "all")}
+                    options={[
+                        { value: "all", label: "全部", count: totalModelCount },
+                        ...billingModes.map((mode) => ({ value: mode, label: marketBillingModeLabels[mode], count: billingCounts[mode] || 0, disabled: !marketFacetEnabled(listings, filters, "billingMode", mode) })),
+                    ]}
+                />
+            </FilterSection>
+            <FilterSection title="端点">
+                <Chips
+                    value={endpointFilter}
+                    onChange={(value) => setEndpointFilter(value as MarketModel["kind"] | "all")}
+                    options={[
+                        { value: "all", label: "全部", count: totalModelCount },
+                        ...endpoints.map((kind) => ({ value: kind, label: marketEndpointLabels[kind], count: endpointCounts[kind] || 0, disabled: !marketFacetEnabled(listings, filters, "endpoint", kind) })),
+                    ]}
+                />
+            </FilterSection>
+        </>
     );
 
     const renderCard = (entry: MarketListing) => (
@@ -318,14 +354,14 @@ export default function MarketPage() {
                             <span>筛选</span>
                             <span className="whitespace-nowrap text-xs font-normal text-[var(--ant-color-text-secondary)]">{visibleModelCount} 个模型 · {visibleGroups.length} 个分组</span>
                         </summary>
-                        <div className="border-t border-[var(--ant-color-border-secondary)] p-4">{renderFilterControls()}</div>
+                        <div className="divide-y divide-[var(--ant-color-border-secondary)] border-t border-[var(--ant-color-border-secondary)] px-3 py-1">{filterSections}</div>
                     </details>
                 </div>
 
                 <div className="flex items-start gap-5">
                     <aside className="sticky top-4 hidden w-64 shrink-0 lg:block">
-                        <div className="rounded-lg border border-[var(--ant-color-border-secondary)] bg-[var(--ant-color-bg-container)] p-4">
-                            {renderFilterControls()}
+                        <div className="divide-y divide-[var(--ant-color-border-secondary)] rounded-lg border border-[var(--ant-color-border-secondary)] bg-[var(--ant-color-bg-container)] px-3 py-1">
+                            {filterSections}
                         </div>
                     </aside>
                     <section className="min-w-0 flex-1">
