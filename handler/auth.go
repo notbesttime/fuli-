@@ -140,6 +140,30 @@ func AdminUsers(w http.ResponseWriter, r *http.Request) {
 	OK(w, users)
 }
 
+func AdminUserDetail(w http.ResponseWriter, r *http.Request, id string) {
+	detail, err := service.GetUserDetail(id)
+	if err != nil {
+		FailError(w, err)
+		return
+	}
+	OK(w, detail)
+}
+
+type setUserStatusRequest struct {
+	Status model.UserStatus `json:"status"`
+}
+
+func AdminSetUserStatus(w http.ResponseWriter, r *http.Request, id string) {
+	var request setUserStatusRequest
+	_ = json.NewDecoder(r.Body).Decode(&request)
+	user, err := service.SetUserStatus(id, request.Status)
+	if err != nil {
+		FailError(w, err)
+		return
+	}
+	OK(w, user)
+}
+
 func AdminSaveUser(w http.ResponseWriter, r *http.Request) {
 	var request saveUserRequest
 	_ = json.NewDecoder(r.Body).Decode(&request)

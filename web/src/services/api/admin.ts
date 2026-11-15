@@ -56,12 +56,32 @@ export type AdminCreditLogListResponse = {
 
 export type AdminUserQuery = {
     keyword?: string;
+    role?: string;
+    status?: string;
+    group?: string;
+    sortBy?: string;
+    sortOrder?: string;
     page?: number;
     pageSize?: number;
 };
 
+export type AdminUserDetail = {
+    user: AdminUser;
+    summary: { totalSpent: number; billedRequests: number };
+    apiKeyCount: number;
+    activeApiKeyCount: number;
+};
+
 export async function fetchAdminUsers(token: string, query: AdminUserQuery = {}) {
     return apiGet<AdminUserListResponse>("/api/admin/users", compactApiParams(query), token);
+}
+
+export async function fetchAdminUserDetail(token: string, id: string) {
+    return apiGet<AdminUserDetail>(`/api/admin/users/${encodeURIComponent(id)}`, undefined, token);
+}
+
+export async function updateAdminUserStatus(token: string, id: string, status: "active" | "ban") {
+    return apiPost<AdminUser>(`/api/admin/users/${encodeURIComponent(id)}/status`, { status }, token);
 }
 
 export async function saveAdminUser(token: string, user: Partial<AdminUser> & { password?: string }) {
@@ -74,6 +94,50 @@ export async function adjustAdminUserCredits(token: string, id: string, credits:
 
 export async function deleteAdminUser(token: string, id: string) {
     return apiDelete<boolean>(`/api/admin/users/${encodeURIComponent(id)}`, token);
+}
+
+export type AdminAPIKey = {
+    id: string;
+    userId: string;
+    username: string;
+    userDisplayName: string;
+    name: string;
+    prefix: string;
+    group: string;
+    active: boolean;
+    expiresAt: string;
+    createdAt: string;
+    lastUsedAt: string;
+    expired: boolean;
+};
+
+export type AdminAPIKeyListResponse = {
+    items: AdminAPIKey[];
+    total: number;
+};
+
+export type AdminAPIKeyQuery = {
+    keyword?: string;
+    group?: string;
+    status?: string;
+    page?: number;
+    pageSize?: number;
+};
+
+export async function fetchAdminAPIKeys(token: string, query: AdminAPIKeyQuery = {}) {
+    return apiGet<AdminAPIKeyListResponse>("/api/admin/api-keys", compactApiParams(query), token);
+}
+
+export async function saveAdminAPIKey(token: string, id: string, input: { name?: string; group?: string; expiresAt?: string; active?: boolean }) {
+    return apiPost<AdminAPIKey>(`/api/admin/api-keys/${encodeURIComponent(id)}`, input, token);
+}
+
+export async function updateAdminAPIKeyStatus(token: string, id: string, active: boolean) {
+    return apiPost<AdminAPIKey>(`/api/admin/api-keys/${encodeURIComponent(id)}/status`, { active }, token);
+}
+
+export async function deleteAdminAPIKey(token: string, id: string) {
+    return apiDelete<boolean>(`/api/admin/api-keys/${encodeURIComponent(id)}`, token);
 }
 
 export async function fetchAdminCreditLogs(token: string, query: AdminUserQuery & { date?: string } = {}) {
@@ -289,6 +353,20 @@ export type AdminPublicSettings = {
         mode: string;
         allowUserProvider: boolean;
     };
+    legal?: AdminLegalSetting;
+};
+
+export type AdminLegalDocument = {
+    title: string;
+    content: string;
+    enabled: boolean;
+    updatedAt?: string;
+};
+
+export type AdminLegalSetting = {
+    terms: AdminLegalDocument;
+    privacy: AdminLegalDocument;
+    about: AdminLegalDocument;
 };
 
 export type AdminStorageProvider = {
@@ -395,8 +473,69 @@ export type AdminAICallLogListResponse = {
     total: number;
 };
 
-export async function fetchAdminAICallLogs(token: string, query: AdminUserQuery = {}) {
+export type AdminAICallLogQuery = {
+    keyword?: string;
+    model?: string;
+    channel?: string;
+    result?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    pageSize?: number;
+};
+
+export type AdminAICallLogGroupStat = {
+    key: string;
+    calls: number;
+    failed: number;
+    failureRate: number;
+    avgDurationMs: number;
+    credits: number;
+};
+
+export type AdminAICallLogDailyStat = {
+    date: string;
+    calls: number;
+    failed: number;
+    credits: number;
+};
+
+export type AdminAICallLogStats = {
+    total: number;
+    success: number;
+    failed: number;
+    failureRate: number;
+    avgDurationMs: number;
+    p95DurationMs: number;
+    credits: number;
+    userCount: number;
+    modelCount: number;
+    channelCount: number;
+    models: string[];
+    channels: string[];
+    daily: AdminAICallLogDailyStat[];
+    byModel: AdminAICallLogGroupStat[];
+    byUser: AdminAICallLogGroupStat[];
+    byChannel: AdminAICallLogGroupStat[];
+};
+
+export type AdminAICallLogExport = {
+    fileName: string;
+    content: string;
+    total: number;
+    truncated: boolean;
+};
+
+export async function fetchAdminAICallLogs(token: string, query: AdminAICallLogQuery = {}) {
     return apiGet<AdminAICallLogListResponse>("/api/admin/ai-logs", compactApiParams(query), token);
+}
+
+export async function fetchAdminAICallLogStats(token: string, query: AdminAICallLogQuery = {}) {
+    return apiGet<AdminAICallLogStats>("/api/admin/ai-logs/stats", compactApiParams(query), token);
+}
+
+export async function exportAdminAICallLogs(token: string, query: AdminAICallLogQuery = {}) {
+    return apiGet<AdminAICallLogExport>("/api/admin/ai-logs/export", compactApiParams(query), token);
 }
 
 export async function deleteAdminAICallLogs(token: string, olderThanDays = 7) {

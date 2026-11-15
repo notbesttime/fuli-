@@ -51,6 +51,14 @@ type UserList struct {
 	Total int    `json:"total"`
 }
 
+// UserDetail 后台用户详情，附带用量与 API Key 概览。
+type UserDetail struct {
+	User              User                 `json:"user"`
+	Summary           UserCreditLogSummary `json:"summary"`
+	APIKeyCount       int                  `json:"apiKeyCount"`
+	ActiveAPIKeyCount int                  `json:"activeApiKeyCount"`
+}
+
 // AuthUser 用户公开信息。
 type AuthUser struct {
 	ID             string   `json:"id"`

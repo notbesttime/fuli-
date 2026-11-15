@@ -15,7 +15,7 @@ import type { WorkflowChannelSettings } from "@/components/workflow/workflow-cha
 import { useAutoDLWorkflowNames } from "@/hooks/use-autodl-workflow";
 import { isWorkflowProtocol, modelChannelApiKeyUrls, modelChannelDefaultBaseUrls, modelChannelProtocolOptions } from "@/lib/model-channel";
 import { startTokenDanceOAuth } from "@/lib/tokendance-oauth";
-import { fetchAdminSettings, fetchChannelHealth, fetchChannelModels, measureAdminStorageProvider, restoreChannelHealth, saveAdminSettings, testChannelModel, type AdminChannelHealthInfo, type AdminModelChannel, type AdminModelCost, type AdminModelGroup, type AdminSettings, type AdminStorageProvider } from "@/services/api/admin";
+import { fetchAdminSettings, fetchChannelHealth, fetchChannelModels, measureAdminStorageProvider, restoreChannelHealth, saveAdminSettings, testChannelModel, type AdminChannelHealthInfo, type AdminLegalDocument, type AdminModelChannel, type AdminModelCost, type AdminModelGroup, type AdminSettings, type AdminStorageProvider } from "@/services/api/admin";
 import { clearStorageConfigCache as clearMediaStorageConfigCache } from "@/services/file-storage";
 import { clearStorageConfigCache as clearImageStorageConfigCache } from "@/services/image-storage";
 import { useUserStore } from "@/stores/use-user-store";
@@ -57,6 +57,7 @@ const emptySettings: AdminSettings = {
         },
         auth: { allowRegister: true, emailVerification: false, linuxDo: { enabled: false } },
         storage: { mode: "local_indexeddb", allowUserProvider: false },
+        legal: { terms: { title: "用户协议", content: "", enabled: false }, privacy: { title: "隐私政策", content: "", enabled: false }, about: { title: "关于我们", content: "", enabled: false } },
     },
     private: { channels: [], channelHealth: { retryTimes: 3, deadCooldownMinutes: 300, rateLimitCooldownSec: 60, upstreamFailureLimit: 5, upstreamCooldownMinutes: 5, timeoutRetry: false }, promptSync: { enabled: true, cron: "0 0 * * *" }, aiLog: { localDirectReportEnabled: false, cleanup: { enabled: false, retentionDays: 14, cron: "0 3 * * *" } }, auth: { linuxDo: { clientId: "", clientSecret: "" } }, storage: { mode: "local_indexeddb", allowUserProvider: false, allowUserGlobalProvider: true, autoSyncAllAssets: false, providers: [], roundRobinCursor: 0, capacityCheck: { enabled: false, cron: "0 */6 * * *" }, capacityLimitBytes: 9 * 1024 * 1024 * 1024 } },
 };
@@ -1212,7 +1213,7 @@ export default function AdminSettingsPage() {
                             </Button>
                         </Space>
                     }
-                    destroyOnHidden
+                    forceRender
                 >
                     <Form form={channelForm} layout="vertical" requiredMark={false} initialValues={emptyChannel}>
                         <Row gutter={16}>
@@ -1333,7 +1334,7 @@ export default function AdminSettingsPage() {
                     okText={`导入 ${countBulkKeys(bulkPreview)} 个渠道`}
                     okButtonProps={{ disabled: countBulkKeys(bulkPreview) === 0 }}
                     onOk={() => void importBulkChannels()}
-                    destroyOnHidden
+                    forceRender
                 >
                     <Form form={bulkForm} layout="vertical" requiredMark={false} initialValues={{ protocol: "openai", weight: 1, timeout: 600, models: [], groups: ["default"] }}>
                         <Typography.Text type="secondary">
@@ -1506,6 +1507,20 @@ function normalizePublicSetting(setting: Partial<AdminSettings["public"]> = {}):
             mode: setting.storage?.mode || "local_indexeddb",
             allowUserProvider: setting.storage?.allowUserProvider === true,
         },
+        legal: {
+            terms: normalizeLegalDocument(setting.legal?.terms),
+            privacy: normalizeLegalDocument(setting.legal?.privacy),
+            about: normalizeLegalDocument(setting.legal?.about),
+        },
+    };
+}
+
+function normalizeLegalDocument(document?: Partial<AdminLegalDocument>): AdminLegalDocument {
+    return {
+        title: document?.title || "",
+        content: document?.content || "",
+        enabled: document?.enabled === true,
+        updatedAt: document?.updatedAt || "",
     };
 }
 

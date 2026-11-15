@@ -178,6 +178,22 @@ type PublicSetting struct {
 	ModelChannel  PublicModelChannelSetting `json:"modelChannel"`
 	Auth          PublicAuthSetting         `json:"auth"`
 	Storage       PublicStorageSetting      `json:"storage"`
+	Legal         LegalSetting              `json:"legal"`
+}
+
+// LegalSetting 站点协议与说明文档，由后台维护并对外公开读取。
+type LegalSetting struct {
+	Terms   LegalDocument `json:"terms"`
+	Privacy LegalDocument `json:"privacy"`
+	About   LegalDocument `json:"about"`
+}
+
+// LegalDocument 单份协议或说明文档。
+type LegalDocument struct {
+	Title     string `json:"title"`
+	Content   string `json:"content"`
+	Enabled   bool   `json:"enabled"`
+	UpdatedAt string `json:"updatedAt,omitempty"`
 }
 
 // RechargeSetting 外部购码入口；不表示外部订单或支付状态已同步。

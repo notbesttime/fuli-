@@ -1,4 +1,4 @@
-import { BarChart3, FileText, ImagePlus, Images, LayoutGrid, Maximize2, Music2, Video, Wallet } from "lucide-react";
+import { BarChart3, FileText, ImagePlus, Images, LayoutGrid, Maximize2, Video, Wallet } from "lucide-react";
 
 const allNavigationTools = [
     {
@@ -27,11 +27,6 @@ const allNavigationTools = [
         icon: Video,
     },
     {
-        slug: "music",
-        label: "音乐创作台",
-        icon: Music2,
-    },
-    {
         slug: "market",
         label: "模型广场",
         icon: LayoutGrid,
@@ -48,8 +43,8 @@ const allNavigationTools = [
     },
 ] as const;
 
-// 暂时隐藏视频和音乐导航入口，后续接入自有服务后恢复。
-export const navigationTools = allNavigationTools.filter((tool) => tool.slug !== "video" && tool.slug !== "music");
+// 音乐创作台暂无页面，待页面实现后再加入 allNavigationTools。
+export const navigationTools = allNavigationTools;
 
 // 控制台和算力固定在导航栏右侧，与账户操作相邻。
 export const accountNavigationTools = navigationTools.filter((tool) => tool.slug === "dashboard" || tool.slug === "credits");

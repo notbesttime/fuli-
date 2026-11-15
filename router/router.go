@@ -158,7 +158,9 @@ func New() *gin.Engine {
 		handler.AdminVoidRedeemCode(c.Writer, c.Request, c.Param("id"))
 	})
 	admin.GET("/users", gin.WrapF(handler.AdminUsers))
+	admin.GET("/users/:id", func(c *gin.Context) { handler.AdminUserDetail(c.Writer, c.Request, c.Param("id")) })
 	admin.POST("/users", gin.WrapF(handler.AdminSaveUser))
+	admin.POST("/users/:id/status", func(c *gin.Context) { handler.AdminSetUserStatus(c.Writer, c.Request, c.Param("id")) })
 	admin.POST("/users/:id/credits", func(c *gin.Context) {
 		handler.AdminAdjustUserCredits(c.Writer, c.Request, c.Param("id"))
 	})
@@ -170,7 +172,13 @@ func New() *gin.Engine {
 	admin.DELETE("/credit-logs/:id", func(c *gin.Context) {
 		handler.AdminDeleteCreditLog(c.Writer, c.Request, c.Param("id"))
 	})
+	admin.GET("/api-keys", gin.WrapF(handler.AdminAPIKeys))
+	admin.POST("/api-keys/:id", func(c *gin.Context) { handler.AdminSaveAPIKey(c.Writer, c.Request, c.Param("id")) })
+	admin.POST("/api-keys/:id/status", func(c *gin.Context) { handler.AdminSetAPIKeyStatus(c.Writer, c.Request, c.Param("id")) })
+	admin.DELETE("/api-keys/:id", func(c *gin.Context) { handler.AdminDeleteAPIKey(c.Writer, c.Request, c.Param("id")) })
 	admin.GET("/ai-logs", gin.WrapF(handler.AdminAICallLogs))
+	admin.GET("/ai-logs/stats", gin.WrapF(handler.AdminAICallLogStats))
+	admin.GET("/ai-logs/export", gin.WrapF(handler.AdminExportAICallLogs))
 	admin.DELETE("/ai-logs", gin.WrapF(handler.AdminDeleteAICallLogs))
 	admin.GET("/settings", gin.WrapF(handler.AdminSettings))
 	admin.POST("/settings", gin.WrapF(handler.AdminSaveSettings))

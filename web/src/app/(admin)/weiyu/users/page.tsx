@@ -1,8 +1,8 @@
 "use client";
 
-import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
+import { CheckCircleOutlined, DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, StopOutlined } from "@ant-design/icons";
 import { ProTable, type ProColumns } from "@ant-design/pro-components";
-import { Avatar, Button, Card, Col, Divider, Flex, Form, Input, InputNumber, Modal, Row, Select, Space, Tag, Tooltip, Typography } from "antd";
+import { Avatar, Button, Card, Col, Descriptions, Divider, Drawer, Flex, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Statistic, Tag, Tooltip, Typography } from "antd";
 import dayjs from "dayjs";
 import { useEffect, useState } from "react";
 
@@ -25,7 +25,7 @@ const statusOptions = [
 ];
 
 export default function AdminUsersPage() {
-    const { users, keyword, page, pageSize, total, isLoading, searchUsers, changePage, changePageSize, resetFilters, refreshUsers, saveUser: saveAdminUser, adjustCredits, deleteUser } = useAdminUsers();
+    const { users, keyword, filters, page, pageSize, total, isLoading, detail, detailUserId, searchUsers, setFilter, changePage, changePageSize, resetFilters, refreshUsers, openDetail, closeDetail, setUserStatus, saveUser: saveAdminUser, adjustCredits, deleteUser } = useAdminUsers();
     const [form] = Form.useForm<UserFormValues>();
     const pricingGroups = useConfigStore((state) => state.publicSettings?.modelChannel.pricing?.groups);
     const groupOptions = (pricingGroups?.length ? pricingGroups : defaultUserGroups).map((group) => ({
@@ -59,7 +59,7 @@ export default function AdminUsersPage() {
         {
             title: "用户",
             dataIndex: "username",
-            width: 260,
+            width: 250,
             render: (_, item) => (
                 <Flex align="center" gap={10} style={{ minWidth: 0 }}>
                     <Avatar src={item.avatarUrl || undefined}>{(item.displayName || item.username || "U").slice(0, 1).toUpperCase()}</Avatar>
@@ -77,19 +77,19 @@ export default function AdminUsersPage() {
         {
             title: "角色",
             dataIndex: "role",
-            width: 100,
+            width: 90,
             render: (_, item) => <Tag color={item.role === "admin" ? "gold" : "default"}>{item.role === "admin" ? "管理员" : "用户"}</Tag>,
         },
         {
             title: "状态",
             dataIndex: "status",
-            width: 90,
+            width: 80,
             render: (_, item) => <Tag color={item.status === "ban" ? "red" : "green"}>{item.status === "ban" ? "禁用" : "正常"}</Tag>,
         },
         {
             title: "账户组",
             dataIndex: "group",
-            width: 130,
+            width: 120,
             render: (_, item) => <Tag color="blue">{groupOptions.find((option) => option.value === (item.group || "default"))?.label || item.group || "默认分组"}</Tag>,
         },
         {
@@ -99,23 +99,30 @@ export default function AdminUsersPage() {
             render: (_, item) => <Typography.Text>{item.credits}</Typography.Text>,
         },
         {
-            title: "Linux.do",
-            dataIndex: "linuxDoId",
-            width: 140,
-            render: (_, item) => <Typography.Text type="secondary">{item.linuxDoId || "-"}</Typography.Text>,
-        },
-        {
             title: "最近登录",
             dataIndex: "lastLoginAt",
-            width: 180,
+            width: 170,
             render: (_, item) => <Typography.Text type="secondary">{item.lastLoginAt ? dayjs(item.lastLoginAt).format("YYYY-MM-DD HH:mm:ss") : "-"}</Typography.Text>,
         },
         {
             title: "操作",
             key: "actions",
-            width: 96,
+            width: 150,
             render: (_, item) => (
-                <Space size={4}>
+                <Space size={2}>
+                    <Tooltip title="详情">
+                        <Button type="text" size="small" icon={<EyeOutlined />} onClick={() => openDetail(item.id)} />
+                    </Tooltip>
+                    <Tooltip title={item.status === "ban" ? "启用" : "禁用"}>
+                        <Popconfirm
+                            title={item.status === "ban" ? "确认启用该用户？" : "确认禁用该用户？禁用后该账号无法继续登录。"}
+                            onConfirm={() => void setUserStatus(item.id, item.status === "ban" ? "active" : "ban")}
+                            okText="确定"
+                            cancelText="取消"
+                        >
+                            <Button type="text" size="small" danger={item.status !== "ban"} icon={item.status === "ban" ? <CheckCircleOutlined /> : <StopOutlined />} />
+                        </Popconfirm>
+                    </Tooltip>
                     <Tooltip title="编辑">
                         <Button type="text" size="small" icon={<EditOutlined />} onClick={() => setEditingUser(item)} />
                     </Tooltip>
@@ -132,9 +139,9 @@ export default function AdminUsersPage() {
             <Flex vertical gap={16}>
                 <Card variant="borderless">
                     <Form layout="vertical">
-                        <Row gutter={16} align="bottom">
-                            <Col flex="360px">
-                                <Form.Item label="关键词">
+                        <Row gutter={[16, 12]} align="bottom">
+                            <Col flex="300px">
+                                <Form.Item label="关键词" style={{ marginBottom: 0 }}>
                                     <Input.Search
                                         value={keywordText}
                                         placeholder="搜索用户名、昵称、邮箱或 Linux.do ID"
@@ -145,22 +152,35 @@ export default function AdminUsersPage() {
                                     />
                                 </Form.Item>
                             </Col>
-                            <Col flex="none">
-                                <Form.Item>
-                                    <Space>
-                                        <Button
-                                            onClick={() => {
-                                                setKeywordText("");
-                                                resetFilters();
-                                            }}
-                                        >
-                                            重置
-                                        </Button>
-                                        <Button type="primary" icon={<ReloadOutlined />} onClick={() => searchUsers(keywordText)}>
-                                            查询
-                                        </Button>
-                                    </Space>
+                            <Col flex="150px">
+                                <Form.Item label="角色" style={{ marginBottom: 0 }}>
+                                    <Select allowClear placeholder="全部角色" value={filters.role || undefined} onChange={(value) => setFilter({ role: value || "" })} options={roleOptions} />
                                 </Form.Item>
+                            </Col>
+                            <Col flex="140px">
+                                <Form.Item label="状态" style={{ marginBottom: 0 }}>
+                                    <Select allowClear placeholder="全部状态" value={filters.status || undefined} onChange={(value) => setFilter({ status: value || "" })} options={statusOptions} />
+                                </Form.Item>
+                            </Col>
+                            <Col flex="160px">
+                                <Form.Item label="账户组" style={{ marginBottom: 0 }}>
+                                    <Select allowClear placeholder="全部账户组" value={filters.group || undefined} onChange={(value) => setFilter({ group: value || "" })} options={groupOptions} />
+                                </Form.Item>
+                            </Col>
+                            <Col flex="none">
+                                <Space>
+                                    <Button
+                                        onClick={() => {
+                                            setKeywordText("");
+                                            resetFilters();
+                                        }}
+                                    >
+                                        重置
+                                    </Button>
+                                    <Button type="primary" icon={<ReloadOutlined />} onClick={() => searchUsers(keywordText)}>
+                                        查询
+                                    </Button>
+                                </Space>
                             </Col>
                         </Row>
                     </Form>
@@ -197,6 +217,60 @@ export default function AdminUsersPage() {
                     }}
                 />
             </Flex>
+
+            <Drawer title="用户详情" open={Boolean(detailUserId)} onClose={closeDetail} size={440}>
+                {detail ? (
+                    <Flex vertical gap={20}>
+                        <Flex align="center" gap={12}>
+                            <Avatar size={48} src={detail.user.avatarUrl || undefined}>{(detail.user.displayName || detail.user.username || "U").slice(0, 1).toUpperCase()}</Avatar>
+                            <Flex vertical>
+                                <Typography.Text strong style={{ fontSize: 16 }}>
+                                    {detail.user.displayName || detail.user.username}
+                                </Typography.Text>
+                                <Typography.Text type="secondary">{detail.user.username}</Typography.Text>
+                            </Flex>
+                        </Flex>
+                        <Descriptions
+                            column={1}
+                            size="small"
+                            bordered
+                            items={[
+                                { key: "role", label: "角色", children: detail.user.role === "admin" ? "管理员" : "用户" },
+                                { key: "status", label: "状态", children: detail.user.status === "ban" ? "禁用" : "正常" },
+                                { key: "group", label: "账户组", children: groupOptions.find((option) => option.value === (detail.user.group || "default"))?.label || detail.user.group || "默认分组" },
+                                { key: "email", label: "邮箱", children: detail.user.email || "-" },
+                                { key: "linuxdo", label: "Linux.do", children: detail.user.linuxDoId || "-" },
+                                { key: "created", label: "注册时间", children: detail.user.createdAt ? dayjs(detail.user.createdAt).format("YYYY-MM-DD HH:mm:ss") : "-" },
+                                { key: "lastLogin", label: "最近登录", children: detail.user.lastLoginAt ? dayjs(detail.user.lastLoginAt).format("YYYY-MM-DD HH:mm:ss") : "-" },
+                            ]}
+                        />
+                        <Row gutter={[12, 12]}>
+                            <Col span={12}>
+                                <Card size="small">
+                                    <Statistic title="算力点余额" value={detail.user.credits} precision={2} />
+                                </Card>
+                            </Col>
+                            <Col span={12}>
+                                <Card size="small">
+                                    <Statistic title="累计消费" value={detail.summary.totalSpent} precision={2} />
+                                </Card>
+                            </Col>
+                            <Col span={12}>
+                                <Card size="small">
+                                    <Statistic title="计费调用" value={detail.summary.billedRequests} />
+                                </Card>
+                            </Col>
+                            <Col span={12}>
+                                <Card size="small">
+                                    <Statistic title="API Key" value={detail.activeApiKeyCount} suffix={`/ ${detail.apiKeyCount}`} />
+                                </Card>
+                            </Col>
+                        </Row>
+                    </Flex>
+                ) : (
+                    <Typography.Text type="secondary">加载中…</Typography.Text>
+                )}
+            </Drawer>
 
             <Modal title={editingUser?.id ? "编辑用户" : "新增用户"} open={Boolean(editingUser)} width={680} onCancel={() => setEditingUser(null)} onOk={() => void saveUser()} okText="保存" cancelText="取消" destroyOnHidden>
                 <Form form={form} layout="vertical" requiredMark={false}>

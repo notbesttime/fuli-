@@ -81,6 +81,24 @@ func ClientAICallLog(w http.ResponseWriter, r *http.Request) {
 	OK(w, true)
 }
 
+func AdminAICallLogStats(w http.ResponseWriter, r *http.Request) {
+	stats, err := service.AICallLogStats(parseQuery(r))
+	if err != nil {
+		FailError(w, err)
+		return
+	}
+	OK(w, stats)
+}
+
+func AdminExportAICallLogs(w http.ResponseWriter, r *http.Request) {
+	exported, err := service.ExportAICallLogs(parseQuery(r))
+	if err != nil {
+		FailError(w, err)
+		return
+	}
+	OK(w, exported)
+}
+
 func AdminDeleteAICallLogs(w http.ResponseWriter, r *http.Request) {
 	days := 7
 	if v := r.URL.Query().Get("olderThanDays"); v != "" {

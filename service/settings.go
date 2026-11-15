@@ -32,6 +32,7 @@ func PublicSettings() (model.PublicSetting, error) {
 		settings.Public.ModelChannel.AvailableModels = enabledChannelModels(settings.Private.Channels)
 	}
 	settings.Public.Announcements = publishedAnnouncements(settings.Public.Announcements, time.Now())
+	settings.Public.Legal = publishedLegalSetting(settings.Public.Legal)
 	settings.Public.Auth.EmailVerification = SMTPConfigured()
 	return settings.Public, err
 }
@@ -250,6 +251,49 @@ func normalizeRechargeSetting(setting model.RechargeSetting) model.RechargeSetti
 	return setting
 }
 
+const (
+	legalTitleLimit   = 120
+	legalContentLimit = 50000
+)
+
+// normalizeLegalSetting 修剪协议文档并补标题；没有正文时一律视为未启用，避免前台出现空白页。
+// publishedLegalSetting 前台只读取已启用且有正文的文档，其余置空。
+func publishedLegalSetting(setting model.LegalSetting) model.LegalSetting {
+	keep := func(document model.LegalDocument) model.LegalDocument {
+		if !document.Enabled || strings.TrimSpace(document.Content) == "" {
+			return model.LegalDocument{}
+		}
+		return document
+	}
+	return model.LegalSetting{Terms: keep(setting.Terms), Privacy: keep(setting.Privacy), About: keep(setting.About)}
+}
+
+func normalizeLegalSetting(setting model.LegalSetting) model.LegalSetting {
+	setting.Terms = normalizeLegalDocument(setting.Terms, "用户协议")
+	setting.Privacy = normalizeLegalDocument(setting.Privacy, "隐私政策")
+	setting.About = normalizeLegalDocument(setting.About, "关于我们")
+	return setting
+}
+
+func normalizeLegalDocument(document model.LegalDocument, fallbackTitle string) model.LegalDocument {
+	document.Title = strings.TrimSpace(document.Title)
+	document.Content = strings.TrimSpace(document.Content)
+	document.UpdatedAt = strings.TrimSpace(document.UpdatedAt)
+	if document.Title == "" {
+		document.Title = fallbackTitle
+	}
+	if runes := []rune(document.Title); len(runes) > legalTitleLimit {
+		document.Title = string(runes[:legalTitleLimit])
+	}
+	if runes := []rune(document.Content); len(runes) > legalContentLimit {
+		document.Content = string(runes[:legalContentLimit])
+	}
+	if document.Content == "" {
+		document.Enabled = false
+	}
+	return document
+}
+
 func normalizePublicSettingWithChannels(setting model.PublicSetting, channels []model.ModelChannel) model.PublicSetting {
 	if setting.Announcements == nil {
 		setting.Announcements = []model.Announcement{}
@@ -262,6 +306,7 @@ func normalizePublicSettingWithChannels(setting model.PublicSetting, channels []
 		notice.PublishDate = strings.TrimSpace(notice.PublishDate)
 	}
 	setting.Recharge = normalizeRechargeSetting(setting.Recharge)
+	setting.Legal = normalizeLegalSetting(setting.Legal)
 	if setting.ModelChannel.AvailableModels == nil {
 		setting.ModelChannel.AvailableModels = []string{}
 	}

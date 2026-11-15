@@ -9,8 +9,20 @@ type Query struct {
 	Tags     []string
 	Category string
 	Type     string
-	Page     int
-	PageSize int
+	// 用户列表专用筛选（其他列表忽略）。
+	Role      string
+	Status    string
+	Group     string
+	SortBy    string
+	SortOrder string
+	// AI 调用日志专用筛选（其他列表忽略）。
+	Model     string
+	Channel   string
+	Result    string
+	StartDate string
+	EndDate   string
+	Page      int
+	PageSize  int
 }
 
 func (q *Query) Normalize() {

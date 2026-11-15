@@ -497,6 +497,53 @@ func DeleteUser(id string) error {
 	return repository.DeleteUser(id)
 }
 
+// GetUserDetail 返回后台用户详情及用量摘要（不返回密码）。
+func GetUserDetail(id string) (model.UserDetail, error) {
+	user, ok, err := repository.GetUserByID(id)
+	if err != nil {
+		return model.UserDetail{}, err
+	}
+	if !ok {
+		return model.UserDetail{}, safeMessageError{message: "用户不存在"}
+	}
+	user.Password = ""
+	normalizeUserDefaults(&user)
+	summary, err := repository.UserCreditLogSummary(id)
+	if err != nil {
+		return model.UserDetail{}, err
+	}
+	keys, err := repository.ListUserAPIKeys(id)
+	if err != nil {
+		return model.UserDetail{}, err
+	}
+	active := 0
+	for _, key := range keys {
+		if key.Active {
+			active++
+		}
+	}
+	return model.UserDetail{User: user, Summary: summary, APIKeyCount: len(keys), ActiveAPIKeyCount: active}, nil
+}
+
+// SetUserStatus 快速启用或禁用用户（对齐 New API 的 enable/disable 动作）。
+func SetUserStatus(id string, status model.UserStatus) (model.User, error) {
+	if status != model.UserStatusActive && status != model.UserStatusBan {
+		return model.User{}, safeMessageError{message: "状态无效"}
+	}
+	user, ok, err := repository.GetUserByID(id)
+	if err != nil {
+		return user, err
+	}
+	if !ok {
+		return user, safeMessageError{message: "用户不存在"}
+	}
+	user.Status = status
+	user.UpdatedAt = now()
+	user, err = repository.SaveUser(user)
+	user.Password = ""
+	return user, err
+}
+
 func GuestUser() model.AuthUser {
 	return model.AuthUser{ID: "", Username: "guest", Role: model.UserRoleGuest}
 }

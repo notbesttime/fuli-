@@ -21,6 +21,16 @@ func ListUsers(q model.Query) ([]model.User, int64, error) {
 		like := "%" + keyword + "%"
 		tx = tx.Where("username LIKE ? OR display_name LIKE ? OR email LIKE ? OR linux_do_id LIKE ?", like, like, like, like)
 	}
+	if role := strings.TrimSpace(q.Role); role != "" {
+		tx = tx.Where("role = ?", role)
+	}
+	if status := strings.TrimSpace(q.Status); status != "" {
+		tx = tx.Where("status = ?", status)
+	}
+	if group := strings.TrimSpace(q.Group); group != "" {
+		// group 为 SQL 保留字，用 map 条件让 GORM 按方言正确加引号。
+		tx = tx.Where(map[string]any{"group": group})
+	}
 
 	var total int64
 	if err := tx.Count(&total).Error; err != nil {
@@ -28,8 +38,31 @@ func ListUsers(q model.Query) ([]model.User, int64, error) {
 	}
 
 	var users []model.User
-	err = tx.Order("created_at desc").Offset(q.Offset()).Limit(q.PageSize).Find(&users).Error
+	err = tx.Order(userListOrder(q.SortBy, q.SortOrder)).Offset(q.Offset()).Limit(q.PageSize).Find(&users).Error
 	return users, total, err
+}
+
+// userListOrder 将后台排序参数映射为白名单列，避免注入并保证稳定次序。
+func userListOrder(sortBy, sortOrder string) string {
+	columns := map[string]string{
+		"id":            "id",
+		"username":      "username",
+		"credits":       "credits",
+		"created_at":    "created_at",
+		"last_login_at": "last_login_at",
+	}
+	column, ok := columns[strings.ToLower(strings.TrimSpace(sortBy))]
+	if !ok {
+		column = "created_at"
+	}
+	dir := "desc"
+	if strings.EqualFold(strings.TrimSpace(sortOrder), "asc") {
+		dir = "asc"
+	}
+	if column == "id" {
+		return "id " + dir
+	}
+	return column + " " + dir + ", id desc"
 }
 
 // CountUsers 返回用户总数。

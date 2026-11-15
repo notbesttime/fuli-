@@ -4,24 +4,36 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App } from "antd";
 
-import { adjustAdminUserCredits, deleteAdminUser, fetchAdminUsers, saveAdminUser, type AdminUser } from "@/services/api/admin";
+import { adjustAdminUserCredits, deleteAdminUser, fetchAdminUserDetail, fetchAdminUsers, saveAdminUser, updateAdminUserStatus, type AdminUser } from "@/services/api/admin";
 import { useUserStore } from "@/stores/use-user-store";
 
 const defaultPageSize = 10;
+
+export type AdminUserFilters = { keyword: string; role: string; status: string; group: string };
+
+const emptyFilters: AdminUserFilters = { keyword: "", role: "", status: "", group: "" };
 
 export function useAdminUsers() {
     const { message } = App.useApp();
     const queryClient = useQueryClient();
     const token = useUserStore((state) => state.token);
     const clearSession = useUserStore((state) => state.clearSession);
-    const [keyword, setKeyword] = useState("");
+    const [filters, setFilters] = useState<AdminUserFilters>(emptyFilters);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(defaultPageSize);
+    const [detailUserId, setDetailUserId] = useState<string | null>(null);
 
     const query = useQuery({
-        queryKey: ["admin", "users", token, keyword, page, pageSize],
-        queryFn: () => fetchAdminUsers(token, { keyword, page, pageSize }),
+        queryKey: ["admin", "users", token, filters, page, pageSize],
+        queryFn: () => fetchAdminUsers(token, { ...filters, page, pageSize }),
         enabled: Boolean(token),
+        retry: false,
+    });
+
+    const detailQuery = useQuery({
+        queryKey: ["admin", "user", token, detailUserId],
+        queryFn: () => fetchAdminUserDetail(token, detailUserId as string),
+        enabled: Boolean(token) && Boolean(detailUserId),
         retry: false,
     });
 
@@ -52,6 +64,16 @@ export function useAdminUsers() {
         onError: (error) => message.error(error instanceof Error ? error.message : "调整失败"),
     });
 
+    const statusMutation = useMutation({
+        mutationFn: ({ id, status }: { id: string; status: "active" | "ban" }) => updateAdminUserStatus(token, id, status),
+        onSuccess: async (_, variables) => {
+            await queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+            await queryClient.invalidateQueries({ queryKey: ["admin", "user", token, variables.id] });
+            message.success(variables.status === "ban" ? "用户已禁用" : "用户已启用");
+        },
+        onError: (error) => message.error(error instanceof Error ? error.message : "操作失败"),
+    });
+
     useEffect(() => {
         if (query.isError) {
             const errorMessage = query.error instanceof Error ? query.error.message : "读取用户失败";
@@ -60,28 +82,40 @@ export function useAdminUsers() {
         }
     }, [clearSession, message, query.error, query.isError]);
 
-    const updateFilters = (next: Partial<{ keyword: string; page: number; pageSize: number }>) => {
-        const queryState = { keyword, page, pageSize, ...next };
-        if (next.keyword !== undefined || next.pageSize !== undefined) queryState.page = 1;
-        setKeyword(queryState.keyword);
-        setPage(queryState.page);
-        setPageSize(queryState.pageSize);
+    const setFilter = (next: Partial<AdminUserFilters>) => {
+        setFilters((prev) => ({ ...prev, ...next }));
+        setPage(1);
     };
 
     const data = query.data;
 
     return {
         users: data?.items || [],
-        keyword,
+        keyword: filters.keyword,
+        filters,
         page,
         pageSize,
         total: data?.total || 0,
-        isLoading: query.isFetching || saveMutation.isPending || deleteMutation.isPending || creditMutation.isPending,
-        searchUsers: (value = keyword) => updateFilters({ keyword: value }),
-        changePage: (value: number) => updateFilters({ page: value }),
-        changePageSize: (value: number) => updateFilters({ pageSize: value }),
-        resetFilters: () => updateFilters({ keyword: "", page: 1, pageSize: defaultPageSize }),
+        isLoading: query.isFetching || saveMutation.isPending || deleteMutation.isPending || creditMutation.isPending || statusMutation.isPending,
+        detail: detailQuery.data,
+        detailLoading: detailQuery.isFetching,
+        detailUserId,
+        searchUsers: (value = filters.keyword) => setFilter({ keyword: value }),
+        setFilter,
+        changePage: (value: number) => setPage(value),
+        changePageSize: (value: number) => {
+            setPageSize(value);
+            setPage(1);
+        },
+        resetFilters: () => {
+            setFilters(emptyFilters);
+            setPage(1);
+            setPageSize(defaultPageSize);
+        },
         refreshUsers: () => query.refetch(),
+        openDetail: (id: string) => setDetailUserId(id),
+        closeDetail: () => setDetailUserId(null),
+        setUserStatus: (id: string, status: "active" | "ban") => statusMutation.mutateAsync({ id, status }),
         saveUser: (user: Partial<AdminUser> & { password?: string }) => saveMutation.mutateAsync(user),
         adjustCredits: (id: string, credits: number) => creditMutation.mutateAsync({ id, credits }),
         deleteUser: (id: string) => deleteMutation.mutateAsync(id),
