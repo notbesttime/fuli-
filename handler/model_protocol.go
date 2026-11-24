@@ -41,6 +41,7 @@ type aiProtocolAdapter struct {
 	videoError    func([]byte, model.ModelChannel, string, bool) string
 	videoContent  func(http.ResponseWriter, *http.Request, string) bool
 	videoID       func(string, string) bool
+	videoPollMethod string // "GET" 或 "POST"，默认 GET
 	allImages     func(string) bool
 	uploads       func(model.ModelChannel, map[string]bool) (map[string]directAIUpload, error)
 }
@@ -392,6 +393,36 @@ var builtinAIProtocols = []aiProtocolAdapter{
 			values.Set("video_id", videoID)
 			values.Set("model_name", modelName)
 			return baseURL + "/agnesapi?" + values.Encode(), true
+		},
+	},
+	{
+		id: service.ModelChannelProtocolSiliconFlow,
+		path: func(channel model.ModelChannel, modelName string, path string) (string, bool) {
+			if !service.IsSiliconFlowChannel(channel) {
+				return path, false
+			}
+			// 视频提交
+			if path == "/videos" {
+				return "/v1/video/submit", true
+			}
+			// 视频轮询：POST /v1/video/status
+			if strings.HasPrefix(path, "/videos/") && !strings.HasSuffix(path, "/content") {
+				return "/v1/video/status", true
+			}
+			return path, true
+		},
+		videoPollMethod: "POST",
+		videoResponse: func(payload []byte, request *http.Request, channel model.ModelChannel, modelName string, status bool) ([]byte, bool) {
+			if !service.IsSiliconFlowChannel(channel) {
+				return nil, false
+			}
+			if status && strings.Contains(request.URL.Path, "/v1/video/status") {
+				return transformSiliconFlowVideoStatus(payload)
+			}
+			if !status && strings.Contains(request.URL.Path, "/v1/video/submit") {
+				return transformSiliconFlowVideoSubmit(payload)
+			}
+			return nil, false
 		},
 	},
 	{

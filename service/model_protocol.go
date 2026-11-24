@@ -31,7 +31,7 @@ type modelProtocolRule struct {
 }
 
 var modelProtocolRegistry map[string]modelProtocolAdapter
-var modelProtocolIDs = []string{ModelChannelProtocolOpenAI, ModelChannelProtocolGemini, ModelChannelProtocolGrok2API, ModelChannelProtocolMiniMax, ModelChannelProtocolAPIMart, ModelChannelProtocolKIE, ModelChannelProtocolMiMo, ModelChannelProtocolAutoDL, ModelChannelProtocolArk, ModelChannelProtocolTokenDance}
+var modelProtocolIDs = []string{ModelChannelProtocolOpenAI, ModelChannelProtocolGemini, ModelChannelProtocolGrok2API, ModelChannelProtocolMiniMax, ModelChannelProtocolAPIMart, ModelChannelProtocolKIE, ModelChannelProtocolMiMo, ModelChannelProtocolAutoDL, ModelChannelProtocolArk, ModelChannelProtocolTokenDance, ModelChannelProtocolSiliconFlow}
 
 func init() {
 	compatible := modelProtocolAdapter{
@@ -67,6 +67,15 @@ func init() {
 		return "MiniMax-H3 是异步视频模型，请在视频创作台测试生成。", nil
 	}
 	modelProtocolRegistry[ModelChannelProtocolMiniMax] = minimax
+
+	siliconflow := compatible
+	siliconflow.models = func(channel model.ModelChannel) ([]string, error) {
+		return []string{"MiniMaxAI/MiniMax-H3"}, nil
+	}
+	siliconflow.testModel = func(_ model.ModelChannel, modelName string) (string, error) {
+		return "SiliconFlow 视频模型是异步任务，请在视频创作台测试生成。", nil
+	}
+	modelProtocolRegistry[ModelChannelProtocolSiliconFlow] = siliconflow
 
 	mimo := compatible
 	mimo.models = func(model.ModelChannel) ([]string, error) {

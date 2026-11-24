@@ -7,6 +7,7 @@ import (
 )
 
 const ModelChannelProtocolMiniMax = "minimax"
+const ModelChannelProtocolSiliconFlow = "siliconflow"
 
 var miniMaxModels = [...]string{
 	"MiniMax-H3",
@@ -22,6 +23,10 @@ func MiniMaxModels() []string {
 
 func IsMiniMaxChannel(channel model.ModelChannel) bool {
 	return strings.EqualFold(strings.TrimSpace(channel.Protocol), ModelChannelProtocolMiniMax)
+}
+
+func IsSiliconFlowChannel(channel model.ModelChannel) bool {
+	return strings.EqualFold(strings.TrimSpace(channel.Protocol), ModelChannelProtocolSiliconFlow)
 }
 
 func IsMiniMaxH3ModelName(modelName string) bool {

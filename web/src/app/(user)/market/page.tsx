@@ -6,6 +6,7 @@ import type { CSSProperties, ComponentProps, ReactNode } from "react";
 import { Empty, Input, Spin, Table, Tag, Typography } from "antd";
 import type { MarketBillingMode, MarketFilters, MarketGroupPrice, MarketListing, MarketModel } from "@/constant/model-market";
 import { buildMarketListings, buildMarketModels, filterMarketListings, formatMarketPrice, marketBillingModeLabels, marketBillingUnit, marketEndpointLabels, marketFacetEnabled, marketPlatform } from "@/constant/model-market";
+import { VendorIcon } from "@/components/vendor-icon";
 import { useConfigStore } from "@/stores/use-config-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { doneNavigationProgress, startNavigationProgress } from "@/components/layout/navigation-progress";
@@ -218,7 +219,7 @@ export default function MarketPage() {
             <div className="min-w-0">
                 <div className="break-all font-mono text-sm font-semibold">{entry.model.model}</div>
                 <div className="mt-1.5 flex flex-wrap items-center gap-1">
-                    <SmallTag>{marketPlatform(entry.model)}</SmallTag>
+                    <SmallTag><VendorIcon vendor={marketPlatform(entry.model)} />{marketPlatform(entry.model)}</SmallTag>
                     <SmallTag>{marketBillingModeLabels[entry.model.billingMode]}</SmallTag>
                     <SmallTag>{marketEndpointLabels[entry.model.kind]}</SmallTag>
                 </div>
@@ -272,7 +273,7 @@ export default function MarketPage() {
                                 render: (_, entry) => (
                                     <div className="min-w-0">
                                         <div className="break-all font-mono text-sm font-medium">{entry.model.model}</div>
-                                        <SmallTag className="mt-1">{marketPlatform(entry.model)}</SmallTag>
+                                        <SmallTag className="mt-1"><VendorIcon vendor={marketPlatform(entry.model)} />{marketPlatform(entry.model)}</SmallTag>
                                     </div>
                                 ),
                             },

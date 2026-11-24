@@ -341,9 +341,24 @@ func pollVideoTaskFromUpstream(ctx context.Context, task model.VideoTask) (servi
 	}
 	endpoint := "/videos/" + pollID
 	upstreamPath := resolveAIProxyPath(channel, task.Model, endpoint)
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, resolveAIProxyURL(channel, task.Model, upstreamPath), nil)
+
+	// 判断轮询方法：siliconflow 用 POST，其他用 GET
+	pollMethod := http.MethodGet
+	pollBody := []byte(nil)
+	for _, adapter := range builtinAIProtocols {
+		if adapter.videoPollMethod == "POST" && strings.EqualFold(strings.TrimSpace(channel.Protocol), adapter.id) {
+			pollMethod = http.MethodPost
+			pollBody = []byte(fmt.Sprintf(`{"requestId":%q}`, pollID))
+			break
+		}
+	}
+
+	request, err := http.NewRequestWithContext(ctx, pollMethod, resolveAIProxyURL(channel, task.Model, upstreamPath), strings.NewReader(string(pollBody)))
 	if err != nil {
 		return service.VideoTaskPollUpdate{}, err
+	}
+	if pollBody != nil {
+		request.Header.Set("Content-Type", "application/json")
 	}
 	service.SetModelChannelAuthHeader(request, channel)
 	startedAt := time.Now()
