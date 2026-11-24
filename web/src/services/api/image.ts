@@ -22,6 +22,7 @@ export type ChatCompletionMessage = {
 
 type ImageApiResponse = {
     data?: Array<Record<string, unknown>>;
+    images?: Array<Record<string, unknown>>;
     error?: { message?: string };
     code?: number;
     msg?: string;
@@ -263,11 +264,11 @@ function parseImagePayload(payload: ImageApiResponse, mime: string): GeneratedIm
     if (typeof payload.code === "number" && payload.code !== 0) {
         throw new ImageRequestError(payload.msg || "请求失败", payload);
     }
-    const images =
-        payload.data
-            ?.map((item) => resolveImageDataUrl(item, mime))
-            .filter((value): value is string => Boolean(value))
-            .map((dataUrl) => ({ id: nanoid(), dataUrl })) || [];
+    // 部分上游（如硅基流动）用 images[] 返回图片，与 OpenAI 的 data[] 并存兼容。
+    const images = [...(payload.data || []), ...(payload.images || [])]
+        .map((item) => resolveImageDataUrl(item, mime))
+        .filter((value): value is string => Boolean(value))
+        .map((dataUrl) => ({ id: nanoid(), dataUrl }));
 
     if (images.length === 0) {
         throw new ImageRequestError("接口没有返回图片", payload);
