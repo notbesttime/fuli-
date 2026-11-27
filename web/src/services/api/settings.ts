@@ -3,7 +3,7 @@ import type { RechargeSetting } from "@/services/api/redeem";
 export const DEFAULT_RECHARGE_SETTING: RechargeSetting = {
     enabled: true,
     storeUrl: "https://wzyp.cn/shop/QKH7GGGF",
-    notice: "小铺购买含平台服务费，直接联系我充值更便宜；大额充值请联系我。",
+    notice: "小铺购买含平台服务费，直接联系我赞助更优惠；大额赞助请联系我。",
     contact: "",
     largeAmount: 100,
     tiers: [0.1, 1, 5, 10, 20, 30].map((amount) => ({ amount, url: "" })),

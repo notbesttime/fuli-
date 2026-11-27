@@ -151,7 +151,7 @@ export function RechargePanel() {
                             } as CSSProperties}>
                                 {recharge.notice ? <Alert type="info" showIcon title={recharge.notice} /> : null}
                                 <fieldset className={styles.tierFieldset} disabled={!recharge.enabled}>
-                                    <legend className={styles.tierLegend}>{locale === "zh-CN" ? "选择充值档位" : "Choose a top-up"}</legend>
+                                    <legend className={styles.tierLegend}>{locale === "zh-CN" ? "选择赞助档位" : "Choose a sponsorship tier"}</legend>
                                     {recharge.tiers.length ? <div className={styles.tierGrid}>
                                         {recharge.tiers.map((tier, index) => {
                                             const isSelected = selected === tier;
@@ -168,7 +168,6 @@ export function RechargePanel() {
                                                         <span className={styles.amount}><span>¥</span>{formatNumber(tier.amount)}</span>
                                                         <span className={styles.credits}>
                                                             {Number.isFinite(rate) && rate > 0 ? <>
-                                                                <span>{locale === "zh-CN" ? "约" : "~"}</span>
                                                                 <strong>{formatNumber(tier.amount / rate)}</strong>
                                                                 <span>{t("common.currency")}</span>
                                                             </> : <span>{locale === "zh-CN" ? "算力以兑换结果为准" : "Credits confirmed on redemption"}</span>}
@@ -181,16 +180,19 @@ export function RechargePanel() {
                                                 </label>
                                             );
                                         })}
-                                    </div> : <Empty description={locale === "zh-CN" ? "暂无可选充值档位，请联系管理员" : "No top-up tiers are available. Contact an administrator."} />}
+                                    </div> : <Empty description={locale === "zh-CN" ? "暂无可选赞助档位，请联系管理员" : "No top-up tiers are available. Contact an administrator."} />}
                                 </fieldset>
                                 <Typography.Paragraph type="secondary" className="mb-0! text-xs">
                                     {locale === "zh-CN" ? "金额与预计算力按当前配置显示，实际结算价格以商品页面为准；购买后请在「兑换码」中兑换。" : "Amounts and estimated credits reflect the current configuration. The product page shows the final price; redeem your code here after purchase."}
                                 </Typography.Paragraph>
                                 <div className="rounded-lg border p-3" style={{ borderColor: token.colorBorderSecondary, background: token.colorFillQuaternary }}>
-                                    <Typography.Text>{locale === "zh-CN" ? "直接联系人工充值更便宜；单笔 ¥" : "Contact support for larger top-ups; orders over ¥"}{formatNumber(recharge.largeAmount)}{locale === "zh-CN" ? " 及以上建议先联系。" : " should be discussed first."}</Typography.Text>
+                                    <Typography.Text>{locale === "zh-CN" ? "直接联系人工赞助更优惠；单笔 ¥" : "Contact us for larger sponsorships; orders over ¥"}{formatNumber(recharge.largeAmount)}{locale === "zh-CN" ? " 及以上建议先联系。" : " should be discussed first."}</Typography.Text>
                                     {recharge.contact ? (
                                         <div className="mt-2 flex flex-wrap items-center gap-2">
-                                            <Typography.Text className="break-all">{locale === "zh-CN" ? "联系方式：" : "Contact: "}{recharge.contact}</Typography.Text>
+                                            <span className="break-all text-sm">
+                                                <span style={{ color: token.colorTextSecondary }}>{locale === "zh-CN" ? "联系方式：" : "Contact: "}</span>
+                                                <span className="bg-gradient-to-r from-amber-500 via-rose-500 to-violet-500 bg-clip-text text-base font-bold tracking-wide text-transparent">{recharge.contact}</span>
+                                            </span>
                                             <Button size="small" icon={<Copy size={13} />} onClick={() => copyText(recharge.contact, locale === "zh-CN" ? "联系方式已复制" : "Contact copied")}>
                                                 {locale === "zh-CN" ? "复制联系方式" : "Copy contact"}
                                             </Button>
