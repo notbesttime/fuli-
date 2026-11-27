@@ -10,6 +10,7 @@ import {
     imageAspectRatios,
     imageResolutionTiers,
     imageSizeLabel,
+    isSizeWithinPixelLimit,
     maxSizeTierForModel,
     ratioForSize,
     sizeForRatioAndTier,
@@ -122,14 +123,15 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                             <SettingTitle color={theme.node.muted}>分辨率</SettingTitle>
                             <div className="grid grid-cols-3 gap-2.5">
                                 {imageResolutionTiers.map((item) => {
-                                    const sizeDisabled = item.tier > maxSizeTier;
                                     const pixelSize = sizeForRatioAndTier(currentRatio, item.value);
+                                    const overPixelLimit = item.tier === 4 && !isSizeWithinPixelLimit(pixelSize);
+                                    const sizeDisabled = item.tier > maxSizeTier || overPixelLimit;
                                     return (
                                         <button
                                             key={item.value}
                                             type="button"
                                             disabled={sizeDisabled}
-                                            title={sizeDisabled ? "当前模型不支持该分辨率" : pixelSize}
+                                            title={overPixelLimit ? "该比例超出 4K 像素上限" : sizeDisabled ? "当前模型不支持该分辨率" : pixelSize}
                                             className={
                                                 sizeDisabled
                                                     ? "flex h-11 cursor-not-allowed items-center justify-center rounded-xl border bg-transparent text-sm opacity-35"

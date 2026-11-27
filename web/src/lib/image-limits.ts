@@ -65,6 +65,15 @@ export function ratioForSize(size: string) {
     return imageAspectRatios.reduce((best, item) => (Math.abs(item.width / item.height - target) < Math.abs(best.width / best.height - target) ? item : best), imageAspectRatios[0]).value;
 }
 
+// 4K 档的面积上限：实测 3840×2160（8.29M）可用，方形 3840×3840（14.7M）420 秒超时，取 8.5M 作为安全上限。
+export const MAX_4K_PIXELS = 8500000;
+
+export function isSizeWithinPixelLimit(size: string) {
+    const match = /^(\d+)x(\d+)$/.exec((size || "").trim());
+    if (!match) return true;
+    return Number(match[1]) * Number(match[2]) <= MAX_4K_PIXELS;
+}
+
 export function tierForSize(size: string) {
     const match = /^(\d+)x(\d+)$/.exec((size || "").trim());
     if (!match) return "1k";
@@ -85,7 +94,8 @@ export function maxSizeTierForModel(model: string) {
 
 export function isSizeSupportedByModel(model: string, size: string) {
     const tier = imageResolutionTiers.find((item) => item.value === tierForSize(size))?.tier || 1;
-    return tier <= maxSizeTierForModel(model);
+    if (tier > maxSizeTierForModel(model)) return false;
+    return tier < 4 || isSizeWithinPixelLimit(size);
 }
 
 export function imageSizeLimitLabel(model: string) {
@@ -108,7 +118,8 @@ export function imageSizeOptionsForModel(model: string) {
     return imageAspectRatios.flatMap((ratio) =>
         imageResolutionTiers
             .filter((tier) => tier.tier <= maxTier)
-            .map((tier) => ({ value: sizeForRatioAndTier(ratio.value, tier.value), label: `${ratio.label} · ${tier.label}` })),
+            .map((tier) => ({ value: sizeForRatioAndTier(ratio.value, tier.value), label: `${ratio.label} · ${tier.label}` }))
+            .filter((item) => isSizeWithinPixelLimit(item.value)),
     );
 }
 

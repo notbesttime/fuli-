@@ -136,7 +136,7 @@ export function buildMarketModels(costs: AdminModelCost[] | undefined, pricing: 
 }
 
 // 模型能力/限制标签：图生图需参考图、是否支持 4K、分辨率上限。
-const CONSTRAINT_TAGS = new Set(["需参考图", "支持 4K", "不支持 4K", "仅基础尺寸"]);
+const CONSTRAINT_TAGS = new Set(["需参考图", "支持 4K", "4K 需 -4k 版", "仅基础尺寸"]);
 
 function modelConstraintTags(model: string) {
     const value = model.trim().toLowerCase();
@@ -144,7 +144,7 @@ function modelConstraintTags(model: string) {
     if (value.includes("image-edit") || value.endsWith("-edit") || value.includes("-edit-")) tags.push("需参考图");
     if (value.includes("-4k")) tags.push("支持 4K");
     else if (value.includes("qwen-image")) tags.push("仅基础尺寸");
-    else if (value.includes("gpt-image") || value.includes("seedream") || value.includes("image")) tags.push("不支持 4K");
+    else if (value.includes("gpt-image") || value.includes("seedream") || value.includes("image")) tags.push("4K 需 -4k 版");
     return tags;
 }
 
