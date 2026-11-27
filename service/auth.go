@@ -62,6 +62,9 @@ func EnsureDefaultAdmin() error {
 	return err
 }
 
+// registerBonusCredits 新用户注册赠送的算力点。
+const registerBonusCredits = 0.1
+
 func Register(username string, password string, email string, code string) (model.AuthSession, error) {
 	settings, err := repository.GetSettings()
 	if err != nil {
@@ -111,11 +114,25 @@ func Register(username string, password string, email string, code string) (mode
 		Role:      model.UserRoleUser,
 		Group:     model.DefaultUserGroup,
 		Status:    model.UserStatusActive,
+		Credits:   registerBonusCredits,
 		CreatedAt: now(),
 		UpdatedAt: now(),
 	})
 	if err != nil {
 		return model.AuthSession{}, err
+	}
+	if registerBonusCredits > 0 {
+		if _, logErr := repository.SaveCreditLog(model.CreditLog{
+			ID:        newID("credit"),
+			UserID:    user.ID,
+			Type:      model.CreditLogTypeRegister,
+			Amount:    registerBonusCredits,
+			Balance:   registerBonusCredits,
+			Remark:    "注册赠送",
+			CreatedAt: now(),
+		}); logErr != nil {
+			log.Printf("record register bonus failed: user=%s err=%v", user.ID, logErr)
+		}
 	}
 	if SMTPConfigured() {
 		if err := consumeEmailCode(email, "register"); err != nil {

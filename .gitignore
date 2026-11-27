@@ -11,6 +11,9 @@ web/public/InfiniteCanvas-ComfyBridge*
 .DS_Store
 .idea
 
+infinite-canvas-server
+infinite-canvas-server.exe
+infinite-canvas-server-linux
 deploy-out/
 .next-agent-*/
 web/.next-agent-*/

@@ -113,7 +113,7 @@ export type ModelCapability = "image" | "video" | "text" | "audio";
 export type ModelCapabilities = Partial<Record<string, ModelCapability>>;
 
 export const defaultConfig: AiConfig = {
-    channelMode: "local",
+    channelMode: "remote",
     baseUrl: "https://api.openai.com",
     apiKey: "",
     model: "gpt-image-2",
@@ -201,7 +201,9 @@ type ConfigStore = {
 };
 
 function resolveEffectiveConfig(config: AiConfig, modelChannel: AdminPublicSettings["modelChannel"] | null, canUseRemoteChannel: boolean) {
-    const channelMode = canUseRemoteChannel ? (modelChannel?.allowCustomChannel ? config.channelMode : "remote") : "local";
+    // 默认使用平台云端模型；仅当用户自己配置了本地渠道并选择了本地模式时才走自带 key。
+    const hasLocalChannel = normalizeLocalChannels(config).some((channel) => Boolean(channel.baseUrl.trim() || channel.apiKey.trim()));
+    const channelMode = canUseRemoteChannel ? (modelChannel?.allowCustomChannel && hasLocalChannel ? config.channelMode : "remote") : "local";
     if (channelMode === "local" || !modelChannel) {
         const localChannels = normalizeLocalChannels(config);
         const modelChannels = localChannels.filter((channel) => !isWorkflowProtocol(channel.protocol));
