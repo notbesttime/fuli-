@@ -7,15 +7,16 @@ import { type CanvasTheme } from "@/lib/canvas-theme";
 import type { AiConfig } from "@/stores/use-config-store";
 
 import {
-    imageAspectPresets as aspectOptions,
+    imageAspectRatios,
+    imageResolutionTiers,
     imageSizeLabel,
-    imageSizeOptions,
-    imageSizeOptionsForModel,
-    imageSizeTier,
     maxSizeTierForModel,
+    ratioForSize,
+    sizeForRatioAndTier,
+    tierForSize,
 } from "@/lib/image-limits";
 
-export { imageSizeLabel, imageSizeOptions, imageSizeOptionsForModel, imageSizeTier, maxSizeTierForModel };
+export { imageSizeLabel, imageSizeOptionsForModel, maxSizeTierForModel } from "@/lib/image-limits";
 
 const qualityOptions = [
     { value: "auto", label: "自动" },
@@ -42,11 +43,13 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
     const count = Math.max(1, Math.min(maxCount, Math.floor(Math.abs(Number(config.count)) || 1)));
     const activeSize = config.size || "auto";
     const maxSizeTier = Math.max(1, maxSizeTierForModel(config.model));
-    const selectedAspect = aspectOptions.find((item) => (item.size || item.value) === activeSize || item.value === activeSize);
-    const dimensions = readSizeDimensions(activeSize, selectedAspect || aspectOptions[0]);
-    const selectAspect = (value: string) => {
-        const option = aspectOptions.find((item) => item.value === value);
-        onConfigChange("size", option?.size || option?.value || "auto");
+    const currentRatio = ratioForSize(activeSize);
+    const currentTier = tierForSize(activeSize);
+    const dimensions = readSizeDimensions(activeSize, readSizeDimensions(sizeForRatioAndTier(currentRatio, "1k"), { width: 1024, height: 1024 }));
+    const applySize = (ratio: string, tier: string) => {
+        const tierInfo = imageResolutionTiers.find((item) => item.value === tier);
+        const safeTier = tierInfo && tierInfo.tier <= maxSizeTier ? tier : "1k";
+        onConfigChange("size", sizeForRatioAndTier(ratio, safeTier));
     };
     const updateDimension = (key: "width" | "height", value: number | null) => {
         const next = Math.max(1, Math.floor(value || dimensions[key] || 1024));
@@ -100,26 +103,44 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                         <div className="space-y-2.5">
                             <SettingTitle color={theme.node.muted}>宽高比</SettingTitle>
                             <div className="grid grid-cols-4 gap-2.5">
-                                {aspectOptions.map((item) => {
-                                    const sizeDisabled = item.tier > maxSizeTier;
-                                    return (
+                                {imageAspectRatios.map((item) => (
                                     <button
                                         key={item.value}
                                         type="button"
-                                        disabled={sizeDisabled}
-                                        title={sizeDisabled ? "当前模型不支持该分辨率" : undefined}
-                                        className={
-                                            sizeDisabled
-                                                ? "flex h-[72px] cursor-not-allowed flex-col items-center justify-center gap-1.5 rounded-xl border bg-transparent text-sm opacity-35"
-                                                : "flex h-[72px] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border bg-transparent text-sm transition hover:opacity-80"
-                                        }
-                                        style={{ borderColor: selectedAspect?.value === item.value ? theme.node.text : theme.node.stroke, background: "transparent", color: theme.node.text }}
+                                        className="flex h-[72px] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border bg-transparent text-sm transition hover:opacity-80"
+                                        style={{ borderColor: currentRatio === item.value ? theme.node.text : theme.node.stroke, background: "transparent", color: theme.node.text }}
                                         onMouseDown={(event) => event.stopPropagation()}
-                                        onClick={() => selectAspect(item.value)}
+                                        onClick={() => applySize(item.value, currentTier)}
                                     >
                                         <AspectIcon type={item.icon} width={item.width} height={item.height} color={theme.node.text} />
                                         <span>{item.label}</span>
                                     </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="space-y-2.5">
+                            <SettingTitle color={theme.node.muted}>分辨率</SettingTitle>
+                            <div className="grid grid-cols-3 gap-2.5">
+                                {imageResolutionTiers.map((item) => {
+                                    const sizeDisabled = item.tier > maxSizeTier;
+                                    const pixelSize = sizeForRatioAndTier(currentRatio, item.value);
+                                    return (
+                                        <button
+                                            key={item.value}
+                                            type="button"
+                                            disabled={sizeDisabled}
+                                            title={sizeDisabled ? "当前模型不支持该分辨率" : pixelSize}
+                                            className={
+                                                sizeDisabled
+                                                    ? "flex h-11 cursor-not-allowed items-center justify-center rounded-xl border bg-transparent text-sm opacity-35"
+                                                    : "flex h-11 cursor-pointer items-center justify-center rounded-xl border bg-transparent text-sm transition hover:opacity-80"
+                                            }
+                                            style={{ borderColor: currentTier === item.value ? theme.node.text : theme.node.stroke, color: theme.node.text }}
+                                            onMouseDown={(event) => event.stopPropagation()}
+                                            onClick={() => applySize(currentRatio, item.value)}
+                                        >
+                                            {item.label}
+                                        </button>
                                     );
                                 })}
                             </div>
