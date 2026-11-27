@@ -12,6 +12,7 @@ import {
     imageSizeLabel,
     isSizeWithinPixelLimit,
     maxSizeTierForModel,
+    resolveSize,
     ratioForSize,
     sizeForRatioAndTier,
     tierForSize,
@@ -50,7 +51,7 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
     const applySize = (ratio: string, tier: string) => {
         const tierInfo = imageResolutionTiers.find((item) => item.value === tier);
         const safeTier = tierInfo && tierInfo.tier <= maxSizeTier ? tier : "1k";
-        onConfigChange("size", sizeForRatioAndTier(ratio, safeTier));
+        onConfigChange("size", resolveSize(ratio, safeTier));
     };
     const updateDimension = (key: "width" | "height", value: number | null) => {
         const next = Math.max(1, Math.floor(value || dimensions[key] || 1024));
@@ -123,7 +124,7 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                             <SettingTitle color={theme.node.muted}>分辨率</SettingTitle>
                             <div className="grid grid-cols-3 gap-2.5">
                                 {imageResolutionTiers.map((item) => {
-                                    const pixelSize = sizeForRatioAndTier(currentRatio, item.value);
+                                    const pixelSize = resolveSize(currentRatio, item.value);
                                     const overPixelLimit = item.tier === 4 && !isSizeWithinPixelLimit(pixelSize);
                                     const sizeDisabled = item.tier > maxSizeTier || overPixelLimit;
                                     return (

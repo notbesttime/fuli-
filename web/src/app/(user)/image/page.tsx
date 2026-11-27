@@ -32,7 +32,7 @@ import localforage from "localforage";
 import { saveAs } from "file-saver";
 
 import { ImageSettingsPanel, imageFormatLabel, imageQualityLabel, imageSizeLabel } from "@/components/image-settings-panel";
-import { imageAspectRatios, imageResolutionTiers, isSizeWithinPixelLimit, maxSizeTierForModel, ratioForSize, sizeForRatioAndTier, tierForSize } from "@/lib/image-limits";
+import { imageAspectRatios, imageResolutionTiers, isSizeWithinPixelLimit, maxSizeTierForModel, ratioForSize, resolveSize, tierForSize } from "@/lib/image-limits";
 import { ModelPicker } from "@/components/model-picker";
 import { PromptSelectDialog } from "@/components/prompts/prompt-select-dialog";
 import { AssetPickerModal, type InsertAssetPayload } from "@/app/(user)/canvas/components/asset-picker-modal";
@@ -1545,15 +1545,15 @@ function WorkbenchPanel({
                                     />
                                 </div>
                             </label>
-                            <QuickSelect label="比例" value={ratioForSize(config.size || "auto")} options={imageAspectRatios.map((item) => ({ value: item.value, label: item.label }))} onChange={(value) => updateConfig("size", sizeForRatioAndTier(value, tierForSize(config.size || "auto")))} />
+                            <QuickSelect label="比例" value={ratioForSize(config.size || "auto")} options={imageAspectRatios.map((item) => ({ value: item.value, label: item.label }))} onChange={(value) => updateConfig("size", resolveSize(value, tierForSize(config.size || "auto")))} />
                             <QuickSelect
                                 label="分辨率"
                                 value={tierForSize(config.size || "auto")}
                                 options={imageResolutionTiers
                                     .filter((item) => item.tier <= Math.max(1, maxSizeTierForModel(config.model)))
-                                    .filter((item) => item.tier !== 4 || isSizeWithinPixelLimit(sizeForRatioAndTier(ratioForSize(config.size || "auto"), item.value)))
+                                    .filter((item) => item.tier !== 4 || isSizeWithinPixelLimit(resolveSize(ratioForSize(config.size || "auto"), item.value)))
                                     .map((item) => ({ value: item.value, label: item.label }))}
-                                onChange={(value) => updateConfig("size", sizeForRatioAndTier(ratioForSize(config.size || "auto"), value))}
+                                onChange={(value) => updateConfig("size", resolveSize(ratioForSize(config.size || "auto"), value))}
                             />
                             <QuickSelect label="质量" value={config.quality || "auto"} options={quickQualityOptions} onChange={(value) => updateConfig("quality", value)} />
                             <QuickNumber label="数量" value={config.count || "1"} min={1} max={10} onChange={(value) => updateConfig("count", value)} />

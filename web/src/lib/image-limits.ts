@@ -37,7 +37,24 @@ function alignToStep(value: number, step = 16) {
     return Math.max(step, Math.round(value / step) * step);
 }
 
-// 长边对齐到档位像素，短边按比例换算并补齐到 16 的倍数。
+// 4K 档的面积上限：实测 3840×2160（8.29M）可用，方形 3840×3840（14.7M）420 秒超时。
+// 超过上限时按面积自适应收缩，保证每个比例都能选 4K 档。
+export const MAX_4K_PIXELS = 8400000;
+
+function alignDown(value: number, step = 16) {
+    return Math.max(step, Math.floor(value / step) * step);
+}
+
+// 按目标面积与比例算尺寸，两边同时向下对齐 16，保证面积不超上限。
+function sizeForArea(rw: number, rh: number, target: number) {
+    const scale = Math.sqrt(target / (rw * rh));
+    const width = alignDown(rw * scale);
+    let height = alignDown(rh * scale);
+    while (width * height > target && height > 16) height -= 16;
+    return `${width}x${height}`;
+}
+
+// 长边对齐到档位像素，短边按比例换算并补齐到 16 的倍数；4K 超面积上限时改用面积自适应。
 export function sizeForRatioAndTier(ratio: string, tier: string) {
     const preset = imageResolutionTiers.find((item) => item.value === tier);
     const parts = ratio.split(":");
@@ -47,6 +64,19 @@ export function sizeForRatioAndTier(ratio: string, tier: string) {
     if (rw === rh) return `${preset.longSide}x${preset.longSide}`;
     if (rw > rh) return `${preset.longSide}x${alignToStep((preset.longSide * rh) / rw)}`;
     return `${alignToStep((preset.longSide * rw) / rh)}x${preset.longSide}`;
+}
+
+// 实际下发用的尺寸：4K 档超过面积上限时按面积自适应，其它档位保持长边规则。
+export function resolveSize(ratio: string, tier: string) {
+    const base = sizeForRatioAndTier(ratio, tier);
+    if (!base) return base;
+    const preset = imageResolutionTiers.find((item) => item.value === tier);
+    if (!preset || preset.tier !== 4) return base;
+    const match = /^(\d+)x(\d+)$/.exec(base);
+    if (!match) return base;
+    if (Number(match[1]) * Number(match[2]) <= MAX_4K_PIXELS) return base;
+    const parts = ratio.split(":");
+    return sizeForArea(Number(parts[0]), Number(parts[1]), MAX_4K_PIXELS);
 }
 
 export function ratioForSize(size: string) {
@@ -64,9 +94,6 @@ export function ratioForSize(size: string) {
     const target = a / b;
     return imageAspectRatios.reduce((best, item) => (Math.abs(item.width / item.height - target) < Math.abs(best.width / best.height - target) ? item : best), imageAspectRatios[0]).value;
 }
-
-// 4K 档的面积上限：实测 3840×2160（8.29M）可用，方形 3840×3840（14.7M）420 秒超时，取 8.5M 作为安全上限。
-export const MAX_4K_PIXELS = 8500000;
 
 export function isSizeWithinPixelLimit(size: string) {
     const match = /^(\d+)x(\d+)$/.exec((size || "").trim());
