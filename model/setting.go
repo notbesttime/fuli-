@@ -91,6 +91,7 @@ const (
 	BillingModeImage   = "image"   // 按张
 	BillingModeSecond  = "second"  // 按秒
 	BillingModeRequest = "request" // 按次
+	BillingModeToken   = "token"   // 按 token（元/百万 tokens）
 )
 
 // ModelCost 模型计费配置。Price 的单位由 BillingMode 决定，均为人民币参考价。
@@ -100,6 +101,10 @@ type ModelCost struct {
 	BillingMode string   `json:"billingMode,omitempty"`
 	Price       float64  `json:"price,omitempty"`
 	Credits     float64  `json:"credits"`
+	// token 计费：单位均为「元 / 百万 tokens」，CachePrice 为缓存命中价。
+	InputPrice  float64  `json:"inputPrice,omitempty"`
+	OutputPrice float64  `json:"outputPrice,omitempty"`
+	CachePrice  float64  `json:"cachePrice,omitempty"`
 	Vendor      string   `json:"vendor,omitempty"`
 	Tags        []string `json:"tags,omitempty"`
 }

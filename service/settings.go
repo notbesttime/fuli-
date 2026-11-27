@@ -393,6 +393,8 @@ func normalizeBillingMode(mode string, modelName string) string {
 		return model.BillingModeSecond
 	case model.BillingModeRequest:
 		return model.BillingModeRequest
+	case model.BillingModeToken:
+		return model.BillingModeToken
 	}
 	if strings.HasPrefix(strings.TrimSpace(modelName), "workflow:") {
 		return model.BillingModeRequest
@@ -461,6 +463,61 @@ func findModelCost(costs []model.ModelCost, modelName string, resolution string)
 func ModelCost(modelName string, userGroup string, resolutions ...string) (float64, error) {
 	detail, err := ResolveModelUsageCost(modelName, userGroup, resolutions...)
 	return detail.Credits, err
+}
+
+// TokenPrices 按 token 计费的单价（元/百万 tokens），已乘分组倍率。
+type TokenPrices struct {
+	Input  float64 `json:"input"`
+	Output float64 `json:"output"`
+	Cache  float64 `json:"cache"`
+	Rate   float64 `json:"rate"` // 每算力点对应人民币金额
+}
+
+// ResolveTokenPricesInContext 从调用分组快照解析 token 单价，避免任务期间价格漂移。
+func ResolveTokenPricesInContext(ctx context.Context, modelName string) (TokenPrices, error) {
+	snapshot, ok := ctx.Value(modelGroupContextKey{}).(modelGroupSnapshot)
+	if !ok {
+		return TokenPrices{}, safeMessageError{message: "缺少调用分组快照"}
+	}
+	channel := snapshot.settings.Public.ModelChannel
+	cost, found := findModelCost(channel.ModelCosts, modelName, "")
+	if !found {
+		return TokenPrices{}, nil
+	}
+	ratio := modelGroupRatio(channel.Pricing.Groups, snapshot.billing.Group)
+	if ratio <= 0 {
+		ratio = 1
+	}
+	rate := channel.Pricing.CreditRate
+	if rate <= 0 {
+		rate = 1
+	}
+	return TokenPrices{
+		Input:  math.Round(cost.InputPrice*ratio*10000) / 10000,
+		Output: math.Round(cost.OutputPrice*ratio*10000) / 10000,
+		Cache:  math.Round(cost.CachePrice*ratio*10000) / 10000,
+		Rate:   rate,
+	}, nil
+}
+
+// TokenUsageCredits 按 token 用量折算算力点；缓存命中按 CachePrice 计价。
+func TokenUsageCredits(prices TokenPrices, promptTokens, completionTokens, cachedTokens int) float64 {
+	if prices.Rate <= 0 || (promptTokens <= 0 && completionTokens <= 0) {
+		return 0
+	}
+	if cachedTokens < 0 {
+		cachedTokens = 0
+	}
+	if cachedTokens > promptTokens {
+		cachedTokens = promptTokens
+	}
+	cache := prices.Cache
+	if cache <= 0 {
+		cache = prices.Input
+	}
+	price := (float64(promptTokens-cachedTokens)*prices.Input + float64(cachedTokens)*cache + float64(completionTokens)*prices.Output) / 1000000
+	credits := math.Round(price/prices.Rate*10000) / 10000
+	return credits
 }
 
 // ModelUsageCost 模型一次调用的实际计费结果。

@@ -287,7 +287,7 @@ export type AdminPublicModelChannelSettings = {
     allowUserRemoteChannel: boolean;
 };
 
-export type AdminBillingMode = "image" | "second" | "request";
+export type AdminBillingMode = "image" | "second" | "request" | "token";
 
 export type AdminModelCost = {
     model: string;
@@ -295,6 +295,10 @@ export type AdminModelCost = {
     billingMode?: AdminBillingMode;
     price?: number;
     credits: number;
+    // token 计费单价，单位「元 / 百万 tokens」。
+    inputPrice?: number;
+    outputPrice?: number;
+    cachePrice?: number;
     vendor?: string;
     tags?: string[];
 };

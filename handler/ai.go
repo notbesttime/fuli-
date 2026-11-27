@@ -11,6 +11,8 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -163,6 +165,7 @@ func proxyAIRequest(w http.ResponseWriter, r *http.Request, path string) {
 		return
 	}
 	credits := 0.0
+	tokenBilling := false
 	if userChannelID == "" {
 		usage, costErr := service.ResolveModelUsageCostInContext(r.Context(), modelName, readAIRequestResolution(body, contentType))
 		if costErr != nil {
@@ -170,7 +173,13 @@ func proxyAIRequest(w http.ResponseWriter, r *http.Request, path string) {
 			Fail(w, "AI 接口请求失败")
 			return
 		}
-		credits = usage.Credits * float64(readAIRequestCount(body, contentType, false))
+		// 按 token 计费：单价随用量变化，改为响应后按 usage 结算。
+		if usage.BillingMode == model.BillingModeToken {
+			tokenBilling = true
+			body = withStreamUsageRequested(body)
+		} else {
+			credits = usage.Credits * float64(readAIRequestCount(body, contentType, false))
+		}
 	}
 	if serveParameterTranslation(w, r, body, path, channel, user, credits, startedAt) {
 		return
@@ -284,6 +293,12 @@ func proxyAIRequest(w http.ResponseWriter, r *http.Request, path string) {
 		}
 		service.ReportChannelSuccess(attemptChannel.ID)
 		w.Header().Set("X-Resolved-Channel-ID", attemptChannel.ID)
+		if tokenBilling {
+			capture := &tailCaptureWriter{ResponseWriter: w}
+			serveAIResponse(capture, response, request, attemptChannel, logContext, refundCredits)
+			settleTokenBilling(r.Context(), capture.Tail(), user.ID, modelName, prepared.path)
+			return
+		}
 		serveAIResponse(w, response, request, attemptChannel, logContext, refundCredits)
 		return
 	}
@@ -308,6 +323,104 @@ func geminiStreamRequested(body []byte) bool {
 		Stream *bool `json:"stream"`
 	}
 	return json.Unmarshal(body, &payload) == nil && payload.Stream != nil && *payload.Stream
+}
+
+// tailCaptureWriter 透传响应并保留末尾片段，供 token 用量结算使用。
+type tailCaptureWriter struct {
+	http.ResponseWriter
+	buf []byte
+}
+
+const tailCaptureLimit = 128 * 1024
+
+func (t *tailCaptureWriter) Write(p []byte) (int, error) {
+	t.buf = append(t.buf, p...)
+	if len(t.buf) > tailCaptureLimit {
+		t.buf = t.buf[len(t.buf)-tailCaptureLimit:]
+	}
+	return t.ResponseWriter.Write(p)
+}
+
+func (t *tailCaptureWriter) Flush() {
+	if flusher, ok := t.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
+
+func (t *tailCaptureWriter) Tail() []byte { return t.buf }
+
+// withStreamUsageRequested 为流式请求补上 include_usage，保证能拿到 usage 结算。
+func withStreamUsageRequested(body []byte) []byte {
+	if len(body) == 0 {
+		return body
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return body
+	}
+	stream, _ := payload["stream"].(bool)
+	if !stream {
+		return body
+	}
+	options, _ := payload["stream_options"].(map[string]any)
+	if options == nil {
+		options = map[string]any{}
+	}
+	options["include_usage"] = true
+	payload["stream_options"] = options
+	updated, err := json.Marshal(payload)
+	if err != nil {
+		return body
+	}
+	return updated
+}
+
+var (
+	promptTokensPattern     = regexp.MustCompile(`"prompt_tokens"\s*:\s*(\d+)`)
+	completionTokensPattern = regexp.MustCompile(`"completion_tokens"\s*:\s*(\d+)`)
+	cachedTokensPattern     = regexp.MustCompile(`"cached_tokens"\s*:\s*(\d+)`)
+)
+
+// parseTokenUsage 从响应尾部（含流式 SSE）提取最后一次 usage。
+func parseTokenUsage(tail []byte) (prompt, completion, cached int, ok bool) {
+	last := func(pattern *regexp.Regexp) int {
+		matches := pattern.FindAllSubmatch(tail, -1)
+		if len(matches) == 0 {
+			return 0
+		}
+		value, _ := strconv.Atoi(string(matches[len(matches)-1][1]))
+		return value
+	}
+	prompt = last(promptTokensPattern)
+	completion = last(completionTokensPattern)
+	cached = last(cachedTokensPattern)
+	if prompt <= 0 && completion <= 0 {
+		return 0, 0, 0, false
+	}
+	return prompt, completion, cached, true
+}
+
+// settleTokenBilling 按实际 token 用量扣费；无用量信息时不扣费。
+func settleTokenBilling(ctx context.Context, tail []byte, userID, modelName, path string) {
+	prompt, completion, cached, ok := parseTokenUsage(tail)
+	if !ok {
+		log.Printf("AI token billing skipped: model=%s user=%s no usage in response", modelName, userID)
+		return
+	}
+	prices, err := service.ResolveTokenPricesInContext(ctx, modelName)
+	if err != nil {
+		log.Printf("AI token billing price failed: model=%s err=%v", modelName, err)
+		return
+	}
+	credits := service.TokenUsageCredits(prices, prompt, completion, cached)
+	if credits <= 0 {
+		return
+	}
+	if err := service.ConsumeUserCredits(userID, modelName, credits, path, service.RequestBillingSnapshot(ctx)); err != nil {
+		log.Printf("AI token billing consume failed: user=%s model=%s credits=%g err=%v", userID, modelName, credits, err)
+		return
+	}
+	log.Printf("AI token billing: model=%s prompt=%d completion=%d cached=%d credits=%g", modelName, prompt, completion, cached, credits)
 }
 
 type aiLogContext struct {

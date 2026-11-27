@@ -1,6 +1,6 @@
 import type { AdminModelCost, AdminPricingSetting, AdminPublicModelChannelInfo } from "@/services/api/admin";
 
-export type MarketBillingMode = "image" | "second" | "request";
+export type MarketBillingMode = "image" | "second" | "request" | "token";
 type MarketResolutionPrice = { resolution: string; billingMode: MarketBillingMode; basePrice: number; price: number | null };
 
 export type MarketGroupPrice = {
@@ -45,11 +45,13 @@ export const marketBillingModeLabels: Record<MarketBillingMode, string> = {
     image: "按张",
     second: "按秒",
     request: "按次",
+    token: "按 Token",
 };
 
 export function marketBillingUnit(mode: MarketBillingMode) {
     if (mode === "second") return "元/秒";
     if (mode === "request") return "元/次";
+    if (mode === "token") return "元/百万 tokens";
     return "元/张";
 }
 
@@ -74,6 +76,8 @@ function modelKind(model: string): MarketModel["kind"] {
 // 与后端一致，人民币单价优先；仅配算力点时按 creditRate 换算，保留四位小数。
 function entryPrice(entry: AdminModelCost | undefined, creditRate = 1) {
     if (!entry) return 0;
+    // token 计费按输入单价展示，单位元/百万 tokens。
+    if (entry.billingMode === "token") return round4(Number(entry.inputPrice) || 0);
     const price = Number(entry.price) || 0;
     if (price > 0) return round4(price);
     const credits = Number(entry.credits) || 0;

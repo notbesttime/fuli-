@@ -2,6 +2,11 @@
 
 ## Unreleased
 
++ [新增] 文本模型按 token 计费：新增 `token` 计费模式与输入/输出/缓存单价（元/百万 tokens），响应后按 usage 结算，流式请求自动补 include_usage
++ [调整] 硅基文本模型精简为旗舰 10 个（DeepSeek-V3.2/R1、Qwen3.5-35B-A3B、Qwen3-VL-32B Instruct/Thinking、Qwen3-Omni-30B-A3B、Qwen3-Coder-30B-A3B、GLM-4.5-Air、Ling-flash-2.0、Seed-OSS-36B），其余下架
++ [调整] 文本模型定价=官方价−0.01 元/百万 tokens，缓存命中按输入价 0.45 倍
++ [调整] 模型广场支持「按 Token」计费标签与「元/百万 tokens」单位
+
 + [调整] 算力页文案统一为「赞助」：档位标题改为“选择赞助档位”，公告与提示中的“大额充值/充值更优惠”改为“大额赞助/赞助更优惠”
 + [调整] 预计算力去掉“约”字；联系方式改为渐变高亮加粗显示
 
