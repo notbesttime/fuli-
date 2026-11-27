@@ -111,7 +111,7 @@ export function buildMarketModels(costs: AdminModelCost[] | undefined, pricing: 
             return {
                 model,
                 vendor: base?.vendor || entries[0]?.vendor || "",
-                tags: base?.tags || entries[0]?.tags || [],
+                tags: [...new Set([...(base?.tags || entries[0]?.tags || []), ...modelConstraintTags(model)])],
                 billingMode,
                 basePrice,
                 kind,
@@ -133,6 +133,23 @@ export function buildMarketModels(costs: AdminModelCost[] | undefined, pricing: 
             };
         })
         .sort((a, b) => a.model.localeCompare(b.model));
+}
+
+// 模型能力/限制标签：图生图需参考图、是否支持 4K、分辨率上限。
+const CONSTRAINT_TAGS = new Set(["需参考图", "支持 4K", "不支持 4K", "仅基础尺寸"]);
+
+function modelConstraintTags(model: string) {
+    const value = model.trim().toLowerCase();
+    const tags: string[] = [];
+    if (value.includes("image-edit") || value.endsWith("-edit") || value.includes("-edit-")) tags.push("需参考图");
+    if (value.includes("-4k")) tags.push("支持 4K");
+    else if (value.includes("qwen-image")) tags.push("仅基础尺寸");
+    else if (value.includes("gpt-image") || value.includes("seedream") || value.includes("image")) tags.push("不支持 4K");
+    return tags;
+}
+
+export function marketConstraintTags(model: MarketModel) {
+    return model.tags.filter((tag) => CONSTRAINT_TAGS.has(tag));
 }
 
 export function marketPlatform(model: MarketModel) {

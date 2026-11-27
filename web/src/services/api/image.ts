@@ -1,6 +1,7 @@
 import axios from "axios";
 import { executeParameterTranslation, findParameterTranslation, normalizeTranslationAspectRatio, translationBody, translationHeaders, type TranslationInput } from "./channel-parameter-translation";
 
+import { imageSizeLimitLabel, isSizeSupportedByModel } from "@/lib/image-limits";
 import { isMiniMaxChannel, miniMaxModels } from "@/lib/minimax-video";
 import { dataUrlToFile } from "@/lib/image-utils";
 import { isKIESeedreamLayerDecompositionModel } from "@/lib/kie-models";
@@ -242,8 +243,27 @@ function applyImageGenerationOptions(body: Record<string, unknown>, config: AiCo
     }
 }
 
+// 图生图 / 图像编辑模型必须带参考图，否则上游会直接失败。
+function isReferenceRequiredModel(model: string) {
+    const value = model.trim().toLowerCase();
+    return value.includes("image-edit") || value.endsWith("-edit") || value.includes("-edit-");
+}
+
+function assertImageSizeSupported(model: string, size: string) {
+    if (!isSizeSupportedByModel(model, size)) throw new ImageRequestError(`当前模型不支持该尺寸档位（${imageSizeLimitLabel(model)}），请换更小的尺寸`);
+}
+
 function assertImageReferencesSupported(model: string, references: ReferenceImage[]) {
     if (references.length && isZhipuImageModel(model)) throw new ImageRequestError("智谱 GLM-Image 和 CogView 仅支持文生图");
+    if (!references.length && isReferenceRequiredModel(model)) throw new ImageRequestError("该模型必须上传参考图（图生图 / 图像编辑模型）");
+}
+
+// 把上游的分辨率类报错翻译成可操作提示。
+function friendlyUpstreamMessage(message: string) {
+    const text = message.trim();
+    if (/must not exceed|width \* height|pixels/i.test(text)) return `${text}（当前模型分辨率上限较低，请换更小的尺寸档）`;
+    if (/unsupported.*(size|resolution)|invalid.*(size|resolution)|does not support/i.test(text)) return `${text}（当前模型不支持该尺寸，请换低一档）`;
+    return text;
 }
 
 function normalizeBase64Image(value: string, fallbackMime: string) {
@@ -943,7 +963,7 @@ async function requestAndParseImages(config: AiConfig, endpoint: string, request
             const error = await fetchErrorDetail(response, "请求失败");
             logged = true;
             void writeLocalAICallLog(config, endpoint, startedAt, response.status, timeoutSeconds, stringifyLogPayload(requestBody), stringifyLogPayload(error.detail || error.message), error.message);
-            throw new ImageRequestError(error.message, error.detail);
+            throw new ImageRequestError(friendlyUpstreamMessage(error.message), error.detail);
         }
         const parsed = await parseResponse(response);
         logged = true;
@@ -965,6 +985,7 @@ async function requestImages(config: AiConfig & { seedIndex?: number; seedCount?
 		return result.urls.map((dataUrl) => ({id:nanoid(),dataUrl}));
 	}
     assertImageReferencesSupported(config.model, references);
+    assertImageSizeSupported(config.model, config.size || "auto");
     const params = { ...createImageRequestParams(config), signal };
     const inputImageDataUrls = references.length ? await Promise.all(references.map((image) => imageToDataUrl(image))) : [];
     const useConcurrentSingleRequests = isGeminiConfig(config) || config.apiMode === "responses" || config.apiMode === "chat" || config.codexCli || config.streamImages || isZhipuImageModel(config.model);
@@ -1064,7 +1085,7 @@ export async function createCanvasImageTask(config: AiConfig & { seedIndex?: num
     const response = await fetch("/api/v1/canvas/image-tasks", request);
     if (!response.ok) {
         const error = await fetchErrorDetail(response, "图片任务创建失败");
-        throw new ImageRequestError(error.message, error.detail);
+        throw new ImageRequestError(friendlyUpstreamMessage(error.message), error.detail);
     }
     const payload = (await response.json()) as { code?: number; msg?: string; data?: CanvasImageTask };
     if (payload.code !== 0 || !payload.data) throw new ImageRequestError(payload.msg || "图片任务创建失败", payload);
@@ -1090,6 +1111,7 @@ export async function pollCanvasImageTaskStatus(taskId: string, signal?: AbortSi
 
 async function createCanvasImageTaskRequest(config: AiConfig & { seedIndex?: number; seedCount?: number }, prompt: string, references: ReferenceImage[], params: ImageRequestParams, options: CanvasImageTaskOptions): Promise<RequestInit> {
     assertImageReferencesSupported(config.model, references);
+    assertImageSizeSupported(config.model, config.size || "auto");
     const taskChannelId = channelIdForActiveModel(config);
     const taskChannelHeader: Record<string, string> = config.channelMode === "remote" && taskChannelId ? { "X-Model-Channel-ID": taskChannelId } : {};
     const billingGroupHeader: Record<string, string> = config.channelMode === "remote" && config.billingGroup ? { "X-Canvas-Group": config.billingGroup } : {};

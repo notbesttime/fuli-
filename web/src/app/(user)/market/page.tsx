@@ -5,7 +5,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import type { CSSProperties, ComponentProps, ReactNode } from "react";
 import { Empty, Input, Spin, Table, Tag, Typography } from "antd";
 import type { MarketBillingMode, MarketFilters, MarketGroupPrice, MarketListing, MarketModel } from "@/constant/model-market";
-import { buildMarketListings, buildMarketModels, filterMarketListings, formatMarketPrice, marketBillingModeLabels, marketBillingUnit, marketEndpointLabels, marketFacetEnabled, marketPlatform } from "@/constant/model-market";
+import { buildMarketListings, buildMarketModels, filterMarketListings, formatMarketPrice, marketBillingModeLabels, marketBillingUnit, marketConstraintTags, marketEndpointLabels, marketFacetEnabled, marketPlatform } from "@/constant/model-market";
 import { VendorIcon } from "@/components/vendor-icon";
 import { useConfigStore } from "@/stores/use-config-store";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -222,6 +222,9 @@ export default function MarketPage() {
                     <SmallTag><VendorIcon vendor={marketPlatform(entry.model)} />{marketPlatform(entry.model)}</SmallTag>
                     <SmallTag>{marketBillingModeLabels[entry.model.billingMode]}</SmallTag>
                     <SmallTag>{marketEndpointLabels[entry.model.kind]}</SmallTag>
+                    {marketConstraintTags(entry.model).map((tag) => (
+                        <SmallTag key={tag} className="!text-amber-600 dark:!text-amber-400">{tag}</SmallTag>
+                    ))}
                 </div>
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
@@ -274,6 +277,11 @@ export default function MarketPage() {
                                     <div className="min-w-0">
                                         <div className="break-all font-mono text-sm font-medium">{entry.model.model}</div>
                                         <SmallTag className="mt-1"><VendorIcon vendor={marketPlatform(entry.model)} />{marketPlatform(entry.model)}</SmallTag>
+                                        <div className="mt-1 flex flex-wrap gap-1">
+                                            {marketConstraintTags(entry.model).map((tag) => (
+                                                <SmallTag key={tag} className="!text-amber-600 dark:!text-amber-400">{tag}</SmallTag>
+                                            ))}
+                                        </div>
                                     </div>
                                 ),
                             },

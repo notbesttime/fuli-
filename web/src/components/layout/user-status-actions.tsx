@@ -114,7 +114,15 @@ export function UserStatusActions({ showConfig = true, variant = "default", onOp
                     <div className="mb-3 flex items-center justify-between gap-2"><span className="text-sm font-semibold">{locale === "zh-CN" ? "最近获得的算力" : "Recently earned credits"}</span><Link href="/credits" className="text-xs text-sky-600">{locale === "zh-CN" ? "查看全部" : "View all"}</Link></div>
                     {earnedLoading ? <div className="py-5 text-center"><Spin size="small" /></div> : earned.length ? <div className="space-y-3">{earned.map((item) => <div key={item.id} className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="truncate text-sm">{logLabel(item)}</div><div className="mt-0.5 text-xs text-stone-500">{new Date(item.createdAt).toLocaleString(locale)}</div></div><span className="shrink-0 text-sm font-semibold tabular-nums text-emerald-600">+{formatCredits(item.amount)}</span></div>)}</div> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={locale === "zh-CN" ? "暂无算力获得记录" : "No credits earned yet"} />}
                 </div>}>
-                    <Link href="/credits" className="hidden h-8 shrink-0 items-center gap-1.5 px-1.5 text-xs font-medium tabular-nums sm:flex text-stone-600 opacity-80 transition hover:opacity-100 dark:text-stone-300" aria-label={`${consoleText(locale, "nav.balance")} ${formatCredits(credits)}`}><CreditSymbol className="text-sm leading-none" /><span>{formatCredits(credits)}</span></Link>
+                    <Link
+                        href="/credits"
+                        className="hidden h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-semibold tabular-nums text-white shadow-sm transition hover:opacity-90 hover:shadow-md sm:flex"
+                        style={{ background: "linear-gradient(135deg, #f59e0b 0%, #ec4899 52%, #8b5cf6 100%)" }}
+                        aria-label={`${consoleText(locale, "nav.balance")} ${formatCredits(credits)}`}
+                    >
+                        <CreditSymbol className="text-sm leading-none" />
+                        <span>{formatCredits(credits)}</span>
+                    </Link>
                 </Popover>
             ) : null}
             {!user && onOpenShortcuts ? <button type="button" className={naturalIconClass} style={iconStyle} onClick={onOpenShortcuts} aria-label={consoleText(locale, "nav.shortcuts")} title={consoleText(locale, "nav.shortcuts")}><Keyboard className="size-4" /></button> : null}

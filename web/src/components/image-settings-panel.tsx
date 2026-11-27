@@ -6,37 +6,23 @@ import { ConfigProvider, Switch } from "antd";
 import { type CanvasTheme } from "@/lib/canvas-theme";
 import type { AiConfig } from "@/stores/use-config-store";
 
+import {
+    imageAspectPresets as aspectOptions,
+    imageSizeLabel,
+    imageSizeOptions,
+    imageSizeOptionsForModel,
+    imageSizeTier,
+    maxSizeTierForModel,
+} from "@/lib/image-limits";
+
+export { imageSizeLabel, imageSizeOptions, imageSizeOptionsForModel, imageSizeTier, maxSizeTierForModel };
+
 const qualityOptions = [
     { value: "auto", label: "自动" },
-    { value: "high", label: "高 · 4K" },
-    { value: "medium", label: "中 · 2K" },
-    { value: "low", label: "低 · 1K" },
+    { value: "high", label: "高" },
+    { value: "medium", label: "中" },
+    { value: "low", label: "低" },
 ];
-const DIMENSION_STEP = 16;
-
-const aspectOptions = [
-    { value: "1:1", label: "1:1", width: 1024, height: 1024, icon: "square" },
-    { value: "3:2", label: "3:2", width: 1536, height: 1024, icon: "landscape" },
-    { value: "2:3", label: "2:3", width: 1024, height: 1536, icon: "portrait" },
-    { value: "4:3", label: "4:3", width: 1024, height: 768, icon: "landscape" },
-    { value: "3:4", label: "3:4", width: 768, height: 1024, icon: "portrait" },
-    { value: "16:9", label: "16:9", width: 1920, height: 1080, icon: "landscape" },
-    { value: "9:16", label: "9:16", width: 1080, height: 1920, icon: "portrait" },
-    { value: "21:9", label: "21:9", width: 1568, height: 672, icon: "landscape" },
-    { value: "1:1-2k", label: "1:1(2k)", size: "2048x2048", width: 2048, height: 2048, icon: "square" },
-    { value: "16:9-2k", label: "16:9(2k)", size: "2048x1152", width: 2048, height: 1152, icon: "landscape" },
-    { value: "9:16-2k", label: "9:16(2k)", size: "1152x2048", width: 1152, height: 2048, icon: "portrait" },
-    { value: "21:9-2k", label: "21:9(2k)", size: "3136x1344", width: 3136, height: 1344, icon: "landscape" },
-    { value: "16:9-4k", label: "16:9(4k)", size: "3840x2160", width: 3840, height: 2160, icon: "landscape" },
-    { value: "9:16-4k", label: "9:16(4k)", size: "2160x3840", width: 2160, height: 3840, icon: "portrait" },
-    { value: "21:9-4k", label: "21:9(4k)", size: "6272x2688", width: 6272, height: 2688, icon: "landscape" },
-    { value: "auto", label: "auto", width: 0, height: 0, icon: "auto" },
-];
-
-export const imageSizeOptions = aspectOptions.map((item) => ({
-    value: item.size || item.value,
-    label: item.label,
-}));
 
 type ImageSettingsPanelProps = {
     config: AiConfig;
@@ -55,6 +41,7 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
     const quality = config.quality || "auto";
     const count = Math.max(1, Math.min(maxCount, Math.floor(Math.abs(Number(config.count)) || 1)));
     const activeSize = config.size || "auto";
+    const maxSizeTier = Math.max(1, maxSizeTierForModel(config.model));
     const selectedAspect = aspectOptions.find((item) => (item.size || item.value) === activeSize || item.value === activeSize);
     const dimensions = readSizeDimensions(activeSize, selectedAspect || aspectOptions[0]);
     const selectAspect = (value: string) => {
@@ -113,11 +100,19 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                         <div className="space-y-2.5">
                             <SettingTitle color={theme.node.muted}>宽高比</SettingTitle>
                             <div className="grid grid-cols-4 gap-2.5">
-                                {aspectOptions.map((item) => (
+                                {aspectOptions.map((item) => {
+                                    const sizeDisabled = item.tier > maxSizeTier;
+                                    return (
                                     <button
                                         key={item.value}
                                         type="button"
-                                        className="flex h-[72px] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border bg-transparent text-sm transition hover:opacity-80"
+                                        disabled={sizeDisabled}
+                                        title={sizeDisabled ? "当前模型不支持该分辨率" : undefined}
+                                        className={
+                                            sizeDisabled
+                                                ? "flex h-[72px] cursor-not-allowed flex-col items-center justify-center gap-1.5 rounded-xl border bg-transparent text-sm opacity-35"
+                                                : "flex h-[72px] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border bg-transparent text-sm transition hover:opacity-80"
+                                        }
                                         style={{ borderColor: selectedAspect?.value === item.value ? theme.node.text : theme.node.stroke, background: "transparent", color: theme.node.text }}
                                         onMouseDown={(event) => event.stopPropagation()}
                                         onClick={() => selectAspect(item.value)}
@@ -125,7 +120,8 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                                         <AspectIcon type={item.icon} width={item.width} height={item.height} color={theme.node.text} />
                                         <span>{item.label}</span>
                                     </button>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     </>
@@ -165,12 +161,10 @@ export function ImageSettingsTheme({ theme, children }: { theme: CanvasTheme; ch
 }
 
 export function imageQualityLabel(value: string) {
-    return ({ auto: "自动", high: "高 · 4K", medium: "中 · 2K", low: "低 · 1K" } as Record<string, string>)[value] || value;
+    return ({ auto: "自动", high: "高", medium: "中", low: "低" } as Record<string, string>)[value] || value;
 }
 
-export function imageSizeLabel(size: string) {
-    return aspectOptions.find((item) => (item.size || item.value) === size || item.value === size)?.label || size;
-}
+
 
 function OptionPill({ selected, theme, onClick, children }: { selected: boolean; theme: CanvasTheme; onClick: () => void; children: ReactNode }) {
     return (
