@@ -452,6 +452,7 @@ export function CanvasAssistantPanel({
             apiMode: agentConfig.textApiMode,
             textStreaming: agentConfig.textStreaming === true,
             textReasoningEnabled: agentConfig.textReasoningEnabled === true,
+            textReasoningLevel: agentConfig.textReasoningLevel,
             activeChannelId: effectiveConfig.textChannelId || effectiveConfig.activeChannelId,
             textChannelId: effectiveConfig.textChannelId,
         };

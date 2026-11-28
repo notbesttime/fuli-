@@ -28,7 +28,7 @@ export function AnalyticsCharts({ data, loading }: { data: CreditOverview | null
     const [trendType, setTrendType] = useState<"area" | "bar">("area");
     const [modelType, setModelType] = useState<"pie" | "bar">("pie");
     const specs = useMemo(() => data ? creditChartSpecs(data, metric, trendType, modelType, locale, dark) : null, [data, metric, trendType, modelType, locale, dark]);
-    const format = (value: number) => value.toLocaleString(locale, { maximumFractionDigits: 4 });
+    const format = (value: number) => value.toLocaleString(locale, { maximumFractionDigits: 6 });
     const daily = data?.dailySpending || [];
     const models = data?.modelSpending || [];
     const totalSpent = daily.reduce((sum, item) => sum + item.spent, 0);

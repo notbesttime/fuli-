@@ -1,3 +1,4 @@
+import { applyReasoningParams } from "@/lib/model-reasoning";
 import { mimoTextModels } from "@/lib/mimo-tts";
 import { dataUrlToGeminiInlineData, geminiActionUrl, geminiDirectHeaders, geminiErrorMessage, isGeminiConfig } from "@/lib/gemini";
 import { aiApiUrl, aiHeaders, ImageRequestError, isEventStreamResponse, readJsonServerSentEvents, refreshRemoteUser } from "@/services/api/image";
@@ -96,11 +97,14 @@ class CanvasAgentRequestError extends Error {
     }
 }
 
-type CanvasAgentAiConfig = AiConfig & { textReasoningEnabled?: boolean; textStreaming?: boolean };
+type CanvasAgentAiConfig = AiConfig & { textReasoningEnabled?: boolean; textReasoningLevel?: "off" | "low" | "medium" | "high"; textStreaming?: boolean };
 
 function applyCanvasAgentReasoning(body: Record<string, unknown>, config: CanvasAgentAiConfig, mode: "chat" | "responses" | "gemini") {
-    if (!config.textReasoningEnabled) return;
-    if (mode === "responses") body.reasoning = { effort: "high" };
+    const effort = config.textReasoningLevel || (config.textReasoningEnabled ? "medium" : "off");
+    const model = config.textModel || config.model || "";
+    if (mode === "chat" && applyReasoningParams(body, model, effort)) return;
+    if (effort === "off") return;
+    if (mode === "responses") body.reasoning = { effort };
     else if (mode === "gemini") body.generationConfig = { ...((body.generationConfig as Record<string, unknown> | undefined) || {}), thinkingConfig: config.model.toLowerCase().includes("2.5") ? { thinkingBudget: -1 } : { thinkingLevel: "high" } };
     else if (channelProtocolForConfig(config) === "mimo") body.thinking = { type: "enabled" };
     else body.reasoning_effort = "high";

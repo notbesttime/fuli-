@@ -5,6 +5,7 @@ import { ArrowUp, Brain, FolderOpen, ImageIcon, Menu, Square, Upload, Video } fr
 import { Button, Dropdown } from "antd";
 
 import { canvasThemes } from "@/lib/canvas-theme";
+import { reasoningLevelLabel, reasoningLevelOptions, reasoningSupportForModel, type ReasoningLevel } from "@/lib/model-reasoning";
 import { useEffectiveConfig } from "@/stores/use-config-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasNodeType, type CanvasAgentConfig, type CanvasAgentSkillSelection, type CanvasAssistantReference } from "../types";
@@ -57,7 +58,10 @@ export function CanvasAssistantComposer({
 }: CanvasAssistantComposerProps) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const effectiveConfig = useEffectiveConfig();
-    const reasoningEnabled = agentConfig.textReasoningEnabled === true;
+    const reasoningLevel = (agentConfig.textReasoningLevel || (agentConfig.textReasoningEnabled ? "medium" : "off")) as ReasoningLevel;
+    const reasoningSupport = reasoningSupportForModel(agentConfig.textModel || effectiveConfig.textModel || effectiveConfig.model);
+    const reasoningAdjustable = reasoningSupport === "graded" || reasoningSupport === "toggle";
+    const reasoningTitle = reasoningSupport === "fixed" ? "该模型固定开启思考，无法调节" : reasoningSupport === "none" ? "该模型不支持思考强度" : `思考强度：${reasoningLevelLabel(reasoningLevel)}`;
     const imageConfig = useMemo(() => ({ ...effectiveConfig, quality: agentConfig.imageQuality, size: agentConfig.imageSize }), [agentConfig.imageQuality, agentConfig.imageSize, effectiveConfig]);
     const videoConfig = useMemo(() => ({ ...effectiveConfig, activeChannelId: effectiveConfig.videoChannelId || effectiveConfig.activeChannelId, vquality: agentConfig.videoQuality, size: agentConfig.videoSize }), [agentConfig.videoQuality, agentConfig.videoSize, effectiveConfig]);
     const promptReferences = useMemo(() => {
@@ -129,17 +133,28 @@ export function CanvasAssistantComposer({
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
                         {!codexControls ? (
-                        <Button
-                            type="text"
-                            shape="circle"
-                            className="!h-8 !w-8 !min-w-8"
-                            style={{ color: theme.node.text, background: reasoningEnabled ? theme.toolbar.activeBg : undefined }}
-                            icon={<Brain className="size-4" />}
-                            title={reasoningEnabled ? "推理已开启" : "推理已关闭"}
-                            aria-label={reasoningEnabled ? "关闭推理" : "开启推理"}
-                            aria-pressed={reasoningEnabled}
-                            onClick={() => onAgentConfigChange({ textReasoningEnabled: !reasoningEnabled })}
-                        />
+                        <Dropdown
+                            trigger={["click"]}
+                            placement="topRight"
+                            disabled={!reasoningAdjustable}
+                            menu={{
+                                selectable: true,
+                                selectedKeys: [reasoningLevel],
+                                items: reasoningLevelOptions.map((item) => ({ key: item.value, label: item.label })),
+                                onClick: ({ key }) => onAgentConfigChange({ textReasoningLevel: key as ReasoningLevel, textReasoningEnabled: key !== "off" }),
+                            }}
+                        >
+                            <Button
+                                type="text"
+                                shape="circle"
+                                className="!h-8 !w-8 !min-w-8"
+                                disabled={!reasoningAdjustable}
+                                style={{ color: theme.node.text, background: reasoningLevel !== "off" ? theme.toolbar.activeBg : undefined }}
+                                icon={<Brain className="size-4" />}
+                                title={reasoningTitle}
+                                aria-label={reasoningTitle}
+                            />
+                        </Dropdown>
                         ) : null}
                         <Button
                             type="primary"

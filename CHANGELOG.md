@@ -2,6 +2,9 @@
 
 ## Unreleased
 
++ [新增] 画布对话思考强度选择（关闭/低/中/高）：Qwen3 系走 enable_thinking + thinking_budget（512/2048/8192），DeepSeek-V3.2 与 GLM-4.5 走 thinking.type 开关，R1/Thinking 系提示固定开启
++ [调整] 算力展示最多 6 位小数，便于按 token 计费的微小扣费可读
+
 + [新增] 文本模型按 token 计费：新增 `token` 计费模式与输入/输出/缓存单价（元/百万 tokens），响应后按 usage 结算，流式请求自动补 include_usage
 + [调整] 硅基文本模型精简为旗舰 10 个（DeepSeek-V3.2/R1、Qwen3.5-35B-A3B、Qwen3-VL-32B Instruct/Thinking、Qwen3-Omni-30B-A3B、Qwen3-Coder-30B-A3B、GLM-4.5-Air、Ling-flash-2.0、Seed-OSS-36B），其余下架
 + [调整] 文本模型定价=官方价−0.01 元/百万 tokens，缓存命中按输入价 0.45 倍

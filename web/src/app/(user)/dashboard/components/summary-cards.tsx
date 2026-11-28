@@ -28,7 +28,7 @@ export function SummaryCards({ data, loading }: { data: CreditOverview | null; l
     const groupName = groups?.find((group) => group.id === groupId)?.name || groupId;
     const t = (key: Parameters<typeof consoleText>[1]) => consoleText(locale, key);
     const zh = locale === "zh-CN";
-    const format = (value: number) => value.toLocaleString(locale, { maximumFractionDigits: 4 });
+    const format = (value: number) => value.toLocaleString(locale, { maximumFractionDigits: 6 });
     const spending = data?.dailySpending.map((item) => item.spent) || [];
     const calls = data?.dailySpending.map((item) => item.calls) || [];
     const items = [

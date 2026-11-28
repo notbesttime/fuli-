@@ -102,7 +102,7 @@ function DailyRow({ item, peak }: { item: AdminAICallLogDailyStat; peak: number 
 
 function formatNumber(value: number | undefined) {
     if (value === undefined || Number.isNaN(value)) return "-";
-    return value.toLocaleString(undefined, { maximumFractionDigits: 4 });
+    return value.toLocaleString(undefined, { maximumFractionDigits: 6 });
 }
 
 function formatPercent(value: number | undefined) {

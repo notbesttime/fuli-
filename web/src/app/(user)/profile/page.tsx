@@ -10,7 +10,7 @@ import { fetchCreditOverview, type CreditOverview } from "@/services/api/credits
 import { useConsolePreferences } from "@/stores/use-console-preferences";
 import { useUserStore } from "@/stores/use-user-store";
 
-const formatCredits = (value: number) => value.toLocaleString("zh-CN", { maximumFractionDigits: 4 });
+const formatCredits = (value: number) => value.toLocaleString("zh-CN", { maximumFractionDigits: 6 });
 
 export default function ProfilePage() {
     const { message } = App.useApp();

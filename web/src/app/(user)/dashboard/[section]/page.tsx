@@ -20,7 +20,7 @@ import { useUserStore } from "@/stores/use-user-store";
 import { useConfigStore } from "@/stores/use-config-store";
 import { cn } from "@/lib/utils";
 
-const formatCredits = (value: number) => value.toLocaleString("zh-CN", { maximumFractionDigits: 4 });
+const formatCredits = (value: number) => value.toLocaleString("zh-CN", { maximumFractionDigits: 6 });
 const logTitle = (log: CreditLog) => log.remark || ({ redeem: "充值兑换", admin_adjust: "后台调整", ai_consume: "模型调用", ai_refund: "调用返还" } as Record<string, string>)[log.type] || log.type;
 const modelFromExtra = (extra: string) => {
     try { return (JSON.parse(extra) as { model?: string }).model || ""; }
